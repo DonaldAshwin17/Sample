@@ -1,51 +1,89 @@
 import React from 'react';
+import ReactDOM from 'react-dom';
 import { shallow } from 'enzyme';
-import { DraftOrPublishAction } from './DraftOrPublishAction';
-import { Switch, Grid } from '@material-ui/core';
-import { FormattedMessage } from 'react-intl';
+import App from './App';
+import * as serviceWorker from './serviceWorker';
+import { setUserId } from './services/piwik.service';
 
-jest.mock('redux-react-hook', () => ({
-  useMappedState: jest.fn(),
-}));
+jest.mock('./App', () => () => <div>App Component</div>);
+jest.mock('./serviceWorker', () => ({ unregister: jest.fn() }));
+jest.mock('./services/piwik.service', () => ({ setUserId: jest.fn() }));
 
-describe('DraftOrPublishAction Component', () => {
-  const mockFn = jest.fn();
+describe('index.tsx', () => {
+  let widgetMock: any;
+  
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="root"></div><sgut-connect></sgut-connect>';
+    widgetMock = document.querySelector('sgut-connect');
+    widgetMock.sgwtConnect = {
+      getAuthorizationError: jest.fn(),
+      isAuthorized: jest.fn(),
+      getIdTokenClaims: jest.fn(),
+      requestAuthorization: jest.fn(),
+    };
+  });
+
+  const renderApp = () => {
+    ReactDOM.render(<App />, document.getElementById('root'));
+  };
+
+  const runIndex = () => {
+    require('./index');
+  };
 
   afterEach(() => {
-    jest.clearAllMocks();
+    jest.resetModules();
   });
 
-  it('should render correctly when valueDraftOrPublish is true', () => {
-    const useMappedState = require('redux-react-hook').useMappedState;
-    useMappedState.mockReturnValue(true);
+  it('renders App when sgwtConnect is authorized', () => {
+    widgetMock.sgwtConnect.isAuthorized.mockReturnValue(true);
+    widgetMock.sgwtConnect.getIdTokenClaims.mockReturnValue({ sub: '123' });
 
-    const wrapper = shallow(<DraftOrPublishAction onDraftOrPublish={mockFn} />);
+    runIndex();
 
-    expect(wrapper.find(Grid).at(0).text()).toContain('set.draft');
-    expect(wrapper.find(Switch).prop('defaultChecked')).toBe(true);
-    expect(wrapper.find(Switch).prop('onChange')).toBe(mockFn);
-    expect(wrapper.find(Grid).at(2).text()).toContain('set.publish');
+    expect(setUserId).toHaveBeenCalledWith('123');
+    expect(ReactDOM.render).toHaveBeenCalledWith(<App />, document.getElementById('root'));
   });
 
-  it('should render correctly when valueDraftOrPublish is false', () => {
-    const useMappedState = require('redux-react-hook').useMappedState;
-    useMappedState.mockReturnValue(false);
+  it('requests authorization when sgwtConnect is not authorized', () => {
+    widgetMock.sgwtConnect.isAuthorized.mockReturnValue(false);
 
-    const wrapper = shallow(<DraftOrPublishAction onDraftOrPublish={mockFn} />);
+    runIndex();
 
-    expect(wrapper.find(Grid).at(0).text()).toContain('set.draft');
-    expect(wrapper.find(Switch).prop('defaultChecked')).toBe(false);
-    expect(wrapper.find(Switch).prop('onChange')).toBe(mockFn);
-    expect(wrapper.find(Grid).at(2).text()).toContain('set.publish');
+    expect(widgetMock.sgwtConnect.requestAuthorization).toHaveBeenCalled();
   });
 
-  it('should handle onChange event', () => {
-    const useMappedState = require('redux-react-hook').useMappedState;
-    useMappedState.mockReturnValue(true);
+  it('displays an error message when sgwtConnect returns an authorization error', () => {
+    widgetMock.sgwtConnect.getAuthorizationError.mockReturnValue('Error message');
 
-    const wrapper = shallow(<DraftOrPublishAction onDraftOrPublish={mockFn} />);
-    wrapper.find(Switch).simulate('change');
+    runIndex();
 
-    expect(mockFn).toHaveBeenCalled();
+    expect(document.body.innerHTML).toContain('Authorization error: Error message.');
+  });
+
+  it('displays an error message when widget is null', () => {
+    document.body.innerHTML = '<div id="root"></div>';
+    
+    runIndex();
+
+    expect(document.body.innerHTML).toContain('No widget found to handle the authentication on this application!');
+  });
+
+  it('unregisters the service worker', () => {
+    runIndex();
+
+    expect(serviceWorker.unregister).toHaveBeenCalled();
+  });
+
+  it('handles sgwt-connect--ready event', () => {
+    widgetMock.addEventListener = jest.fn((event, callback) => {
+      if (event === 'sgwt-connect--ready') {
+        callback();
+      }
+    });
+
+    runIndex();
+
+    expect(widgetMock.addEventListener).toHaveBeenCalledWith('sgwt-connect--ready', expect.any(Function));
   });
 });
