@@ -1,0 +1,60 @@
+import React from 'react';
+import { shallow } from 'enzyme';
+import GuidelineDialog from './GuidelineDialog';
+import { Dialog, DialogTitle, DialogContent, DialogActions } from '@material-ui/core';
+import { FormattedMessage } from 'react-intl';
+
+describe('GuidelineDialog Component', () => {
+  const defaultProps = {
+    messageId: 'test.message.id',
+    open: true,
+    onClose: jest.fn(),
+    actions: { left: <button>Left</button>, right: <button>Right</button> },
+    children: <div>Test Children</div>,
+  };
+
+  const setup = (props = {}) => shallow(<GuidelineDialog {...defaultProps} {...props} />);
+
+  it('should render without crashing', () => {
+    const wrapper = setup();
+    expect(wrapper.exists()).toBe(true);
+  });
+
+  it('should render the Dialog component with the correct props', () => {
+    const wrapper = setup();
+    expect(wrapper.find(Dialog).prop('open')).toBe(true);
+    expect(wrapper.find(Dialog).prop('onClose')).toBe(defaultProps.onClose);
+  });
+
+  it('should render the DialogTitle with the correct message id', () => {
+    const wrapper = setup();
+    const dialogTitle = wrapper.find(DialogTitle);
+    expect(dialogTitle.find(FormattedMessage).prop('id')).toBe(defaultProps.messageId);
+  });
+
+  it('should render the DialogContent with children', () => {
+    const wrapper = setup();
+    const dialogContent = wrapper.find(DialogContent);
+    expect(dialogContent.contains(defaultProps.children)).toBe(true);
+  });
+
+  it('should render the DialogActions with left and right actions', () => {
+    const wrapper = setup();
+    const dialogActions = wrapper.find(DialogActions);
+    expect(dialogActions.find('.dialogActionsItem').at(0).contains(defaultProps.actions.left)).toBe(true);
+    expect(dialogActions.find('.dialogActionsItem').at(1).contains(defaultProps.actions.right)).toBe(true);
+  });
+
+  it('should call onClose when the dialog is closed', () => {
+    const wrapper = setup();
+    wrapper.find(Dialog).simulate('close');
+    expect(defaultProps.onClose).toHaveBeenCalled();
+  });
+
+  it('should handle default props for actions', () => {
+    const wrapper = setup({ actions: undefined });
+    const dialogActions = wrapper.find(DialogActions);
+    expect(dialogActions.find('.dialogActionsItem').at(0).isEmptyRender()).toBe(true);
+    expect(dialogActions.find('.dialogActionsItem').at(1).isEmptyRender()).toBe(true);
+  });
+});
