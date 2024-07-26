@@ -1,89 +1,103 @@
+// index.test.tsx
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { shallow } from 'enzyme';
+import { mount } from 'enzyme';
 import App from './App';
 import * as serviceWorker from './serviceWorker';
 import { setUserId } from './services/piwik.service';
 
-jest.mock('./App', () => () => <div>App Component</div>);
-jest.mock('./serviceWorker', () => ({ unregister: jest.fn() }));
-jest.mock('./services/piwik.service', () => ({ setUserId: jest.fn() }));
+jest.mock('react-dom', () => ({
+  render: jest.fn(),
+}));
+jest.mock('./serviceWorker', () => ({
+  unregister: jest.fn(),
+}));
+jest.mock('./services/piwik.service', () => ({
+  setUserId: jest.fn(),
+}));
 
 describe('index.tsx', () => {
-  let widgetMock: any;
-  
+  let widget: any;
+
   beforeEach(() => {
-    document.body.innerHTML = '<div id="root"></div><sgut-connect></sgut-connect>';
-    widgetMock = document.querySelector('sgut-connect');
-    widgetMock.sgwtConnect = {
-      getAuthorizationError: jest.fn(),
-      isAuthorized: jest.fn(),
-      getIdTokenClaims: jest.fn(),
-      requestAuthorization: jest.fn(),
+    widget = {
+      sgwtConnect: {
+        getAuthorizationError: jest.fn(),
+        isAuthorized: jest.fn(),
+        getIdTokenClaims: jest.fn(),
+        requestAuthorization: jest.fn(),
+      },
+      addEventListener: jest.fn((event, callback) => {
+        if (event === 'sgwt-connect--ready') {
+          widget.sgwtConnect.isAuthorized.mockReturnValue(true);
+          widget.sgwtConnect.getIdTokenClaims.mockReturnValue({ sub: 'testUserId' });
+          callback();
+        }
+      }),
+      removeEventListener: jest.fn(),
     };
+    document.querySelector = jest.fn().mockReturnValue(widget);
+    document.body.innerHTML = '';
   });
-
-  const renderApp = () => {
-    ReactDOM.render(<App />, document.getElementById('root'));
-  };
-
-  const runIndex = () => {
-    require('./index');
-  };
 
   afterEach(() => {
-    jest.resetModules();
+    jest.resetAllMocks();
   });
 
-  it('renders App when sgwtConnect is authorized', () => {
-    widgetMock.sgwtConnect.isAuthorized.mockReturnValue(true);
-    widgetMock.sgwtConnect.getIdTokenClaims.mockReturnValue({ sub: '123' });
+  it('should render App if widget is authorized', () => {
+    widget.sgwtConnect.isAuthorized.mockReturnValue(true);
+    widget.sgwtConnect.getIdTokenClaims.mockReturnValue({ sub: 'testUserId' });
 
-    runIndex();
+    require('./index');
 
-    expect(setUserId).toHaveBeenCalledWith('123');
+    expect(setUserId).toHaveBeenCalledWith('testUserId');
     expect(ReactDOM.render).toHaveBeenCalledWith(<App />, document.getElementById('root'));
   });
 
-  it('requests authorization when sgwtConnect is not authorized', () => {
-    widgetMock.sgwtConnect.isAuthorized.mockReturnValue(false);
+  it('should request authorization if widget is not authorized', () => {
+    widget.sgwtConnect.isAuthorized.mockReturnValue(false);
 
-    runIndex();
+    require('./index');
 
-    expect(widgetMock.sgwtConnect.requestAuthorization).toHaveBeenCalled();
+    expect(widget.sgwtConnect.requestAuthorization).toHaveBeenCalled();
   });
 
-  it('displays an error message when sgwtConnect returns an authorization error', () => {
-    widgetMock.sgwtConnect.getAuthorizationError.mockReturnValue('Error message');
+  it('should show authorization error if there is an authorization error', () => {
+    widget.sgwtConnect.getAuthorizationError.mockReturnValue('Error message');
 
-    runIndex();
+    require('./index');
 
-    expect(document.body.innerHTML).toContain('Authorization error: Error message.');
+    expect(document.body.innerHTML).toContain('Authorization error: Error message');
   });
 
-  it('displays an error message when widget is null', () => {
-    document.body.innerHTML = '<div id="root"></div>';
-    
-    runIndex();
+  it('should show "No widget found" message if widget is null', () => {
+    document.querySelector = jest.fn().mockReturnValue(null);
+
+    require('./index');
 
     expect(document.body.innerHTML).toContain('No widget found to handle the authentication on this application!');
   });
 
-  it('unregisters the service worker', () => {
-    runIndex();
-
-    expect(serviceWorker.unregister).toHaveBeenCalled();
-  });
-
-  it('handles sgwt-connect--ready event', () => {
-    widgetMock.addEventListener = jest.fn((event, callback) => {
+  it('should handle sgwt-connect--ready event and render App', () => {
+    widget.sgwtConnect.isAuthorized.mockReturnValueOnce(false);
+    widget.addEventListener = jest.fn((event, callback) => {
       if (event === 'sgwt-connect--ready') {
+        widget.sgwtConnect.isAuthorized.mockReturnValue(true);
+        widget.sgwtConnect.getIdTokenClaims.mockReturnValue({ sub: 'testUserId' });
         callback();
       }
     });
 
-    runIndex();
+    require('./index');
 
-    expect(widgetMock.addEventListener).toHaveBeenCalledWith('sgwt-connect--ready', expect.any(Function));
+    expect(widget.addEventListener).toHaveBeenCalledWith('sgwt-connect--ready', expect.any(Function));
+    expect(setUserId).toHaveBeenCalledWith('testUserId');
+    expect(ReactDOM.render).toHaveBeenCalledWith(<App />, document.getElementById('root'));
+  });
+
+  it('should unregister service worker', () => {
+    require('./index');
+
+    expect(serviceWorker.unregister).toHaveBeenCalled();
   });
 });
