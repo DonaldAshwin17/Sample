@@ -1,56 +1,51 @@
 import React from 'react';
 import { shallow } from 'enzyme';
-import { BackAction, CancelAction, DraftOrPublishAction, PreviewAction, SaveAction, CreateVersion } from './Actions';
-import ActionButton from './ActionButton';
-import { Switch } from '@material-ui/core';
+import { DraftOrPublishAction } from './DraftOrPublishAction';
+import { Switch, Grid } from '@material-ui/core';
+import { FormattedMessage } from 'react-intl';
 
 jest.mock('redux-react-hook', () => ({
   useMappedState: jest.fn(),
 }));
 
-describe('Actions Components', () => {
+describe('DraftOrPublishAction Component', () => {
   const mockFn = jest.fn();
 
   afterEach(() => {
     jest.clearAllMocks();
   });
 
-  it('BackAction should render correctly', () => {
-    const wrapper = shallow(<BackAction onGoBack={mockFn} />);
-    expect(wrapper.find(ActionButton).prop('onClick')).toBe(mockFn);
-  });
-
-  it('CancelAction should render correctly', () => {
-    const wrapper = shallow(<CancelAction onCancel={mockFn} />);
-    expect(wrapper.find(ActionButton).prop('onClick')).toBe(mockFn);
-  });
-
-  it('DraftOrPublishAction should render correctly', () => {
+  it('should render correctly when valueDraftOrPublish is true', () => {
     const useMappedState = require('redux-react-hook').useMappedState;
     useMappedState.mockReturnValue(true);
 
     const wrapper = shallow(<DraftOrPublishAction onDraftOrPublish={mockFn} />);
+
+    expect(wrapper.find(Grid).at(0).text()).toContain('set.draft');
+    expect(wrapper.find(Switch).prop('defaultChecked')).toBe(true);
     expect(wrapper.find(Switch).prop('onChange')).toBe(mockFn);
+    expect(wrapper.find(Grid).at(2).text()).toContain('set.publish');
   });
 
-  it('PreviewAction should render correctly', () => {
-    const wrapper = shallow(<PreviewAction onPreview={mockFn} />);
-    expect(wrapper.find(ActionButton).prop('onClick')).toBe(mockFn);
+  it('should render correctly when valueDraftOrPublish is false', () => {
+    const useMappedState = require('redux-react-hook').useMappedState;
+    useMappedState.mockReturnValue(false);
+
+    const wrapper = shallow(<DraftOrPublishAction onDraftOrPublish={mockFn} />);
+
+    expect(wrapper.find(Grid).at(0).text()).toContain('set.draft');
+    expect(wrapper.find(Switch).prop('defaultChecked')).toBe(false);
+    expect(wrapper.find(Switch).prop('onChange')).toBe(mockFn);
+    expect(wrapper.find(Grid).at(2).text()).toContain('set.publish');
   });
 
-  it('SaveAction should render correctly with default props', () => {
-    const wrapper = shallow(<SaveAction onSave={mockFn} />);
-    expect(wrapper.find(ActionButton).prop('onClick')).toBe(mockFn);
-    expect(wrapper.find(ActionButton).prop('disabled')).toBe(false);
-  });
+  it('should handle onChange event', () => {
+    const useMappedState = require('redux-react-hook').useMappedState;
+    useMappedState.mockReturnValue(true);
 
-  it('SaveAction should render correctly with disabled prop', () => {
-    const wrapper = shallow(<SaveAction onSave={mockFn} disabled />);
-    expect(wrapper.find(ActionButton).prop('disabled')).toBe(true);
-  });
+    const wrapper = shallow(<DraftOrPublishAction onDraftOrPublish={mockFn} />);
+    wrapper.find(Switch).simulate('change');
 
-  it('CreateVersion should render correctly', () => {
-    const wrapper = shallow(<CreateVersion onCreateVersion={mockFn} />);
-    expect(wrapper.find(ActionButton).prop('onClick')).toBe(mockFn);
+    expect(mockFn).toHaveBeenCalled();
   });
 });
