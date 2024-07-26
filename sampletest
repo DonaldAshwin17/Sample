@@ -1,60 +1,56 @@
 import React from 'react';
 import { shallow } from 'enzyme';
-import GuidelineDialog from './GuidelineDialog';
-import { Dialog, DialogTitle, DialogContent, DialogActions } from '@material-ui/core';
-import { FormattedMessage } from 'react-intl';
+import { BackAction, CancelAction, DraftOrPublishAction, PreviewAction, SaveAction, CreateVersion } from './Actions';
+import ActionButton from './ActionButton';
+import { Switch } from '@material-ui/core';
 
-describe('GuidelineDialog Component', () => {
-  const defaultProps = {
-    messageId: 'test.message.id',
-    open: true,
-    onClose: jest.fn(),
-    actions: { left: <button>Left</button>, right: <button>Right</button> },
-    children: <div>Test Children</div>,
-  };
+jest.mock('redux-react-hook', () => ({
+  useMappedState: jest.fn(),
+}));
 
-  const setup = (props = {}) => shallow(<GuidelineDialog {...defaultProps} {...props} />);
+describe('Actions Components', () => {
+  const mockFn = jest.fn();
 
-  it('should render without crashing', () => {
-    const wrapper = setup();
-    expect(wrapper.exists()).toBe(true);
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
-  it('should render the Dialog component with the correct props', () => {
-    const wrapper = setup();
-    expect(wrapper.find(Dialog).prop('open')).toBe(true);
-    expect(wrapper.find(Dialog).prop('onClose')).toBe(defaultProps.onClose);
+  it('BackAction should render correctly', () => {
+    const wrapper = shallow(<BackAction onGoBack={mockFn} />);
+    expect(wrapper.find(ActionButton).prop('onClick')).toBe(mockFn);
   });
 
-  it('should render the DialogTitle with the correct message id', () => {
-    const wrapper = setup();
-    const dialogTitle = wrapper.find(DialogTitle);
-    expect(dialogTitle.find(FormattedMessage).prop('id')).toBe(defaultProps.messageId);
+  it('CancelAction should render correctly', () => {
+    const wrapper = shallow(<CancelAction onCancel={mockFn} />);
+    expect(wrapper.find(ActionButton).prop('onClick')).toBe(mockFn);
   });
 
-  it('should render the DialogContent with children', () => {
-    const wrapper = setup();
-    const dialogContent = wrapper.find(DialogContent);
-    expect(dialogContent.contains(defaultProps.children)).toBe(true);
+  it('DraftOrPublishAction should render correctly', () => {
+    const useMappedState = require('redux-react-hook').useMappedState;
+    useMappedState.mockReturnValue(true);
+
+    const wrapper = shallow(<DraftOrPublishAction onDraftOrPublish={mockFn} />);
+    expect(wrapper.find(Switch).prop('onChange')).toBe(mockFn);
   });
 
-  it('should render the DialogActions with left and right actions', () => {
-    const wrapper = setup();
-    const dialogActions = wrapper.find(DialogActions);
-    expect(dialogActions.find('.dialogActionsItem').at(0).contains(defaultProps.actions.left)).toBe(true);
-    expect(dialogActions.find('.dialogActionsItem').at(1).contains(defaultProps.actions.right)).toBe(true);
+  it('PreviewAction should render correctly', () => {
+    const wrapper = shallow(<PreviewAction onPreview={mockFn} />);
+    expect(wrapper.find(ActionButton).prop('onClick')).toBe(mockFn);
   });
 
-  it('should call onClose when the dialog is closed', () => {
-    const wrapper = setup();
-    wrapper.find(Dialog).simulate('close');
-    expect(defaultProps.onClose).toHaveBeenCalled();
+  it('SaveAction should render correctly with default props', () => {
+    const wrapper = shallow(<SaveAction onSave={mockFn} />);
+    expect(wrapper.find(ActionButton).prop('onClick')).toBe(mockFn);
+    expect(wrapper.find(ActionButton).prop('disabled')).toBe(false);
   });
 
-  it('should handle default props for actions', () => {
-    const wrapper = setup({ actions: undefined });
-    const dialogActions = wrapper.find(DialogActions);
-    expect(dialogActions.find('.dialogActionsItem').at(0).isEmptyRender()).toBe(true);
-    expect(dialogActions.find('.dialogActionsItem').at(1).isEmptyRender()).toBe(true);
+  it('SaveAction should render correctly with disabled prop', () => {
+    const wrapper = shallow(<SaveAction onSave={mockFn} disabled />);
+    expect(wrapper.find(ActionButton).prop('disabled')).toBe(true);
+  });
+
+  it('CreateVersion should render correctly', () => {
+    const wrapper = shallow(<CreateVersion onCreateVersion={mockFn} />);
+    expect(wrapper.find(ActionButton).prop('onClick')).toBe(mockFn);
   });
 });
