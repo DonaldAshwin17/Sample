@@ -1,153 +1,168 @@
+// Import the function and dependencies
+const { mapEntityToPageDTO } = require('./path/to/your/module');
+const { generateUrl } = require('./url');
+const { SetDto } = require('../dto/set.dto');
 
-describe('flatQuestionTreeAnswers', () => {
-  const pattern = /{{(.*?)}}/g;
+// Mock the generateUrl function
+jest.mock('./url', () => ({
+  generateUrl: jest.fn(),
+}));
 
-  it('should flatten a nested question tree with no children', () => {
-    const answerArr = [
-      {
-        id: 1,
-        answer: 'Answer 1',
-        additionalClauseText: 'Clause text {{placeholder1}}',
-        children: null,
-      },
-    ];
+describe('mapEntityToPageDTO', () => {
 
-    const expected = [
-      {
-        id: 1,
-        title: 'Answer 1',
-        message: 'Clause text {{placeholder1}}',
-        ansPlacheolder: ['placeholder1'],
-      },
-    ];
-
-    const result = flatQuestionTreeAnswers(answerArr);
-
-    expect(result).toEqual(expected);
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  it('should flatten a nested question tree with children', () => {
-    const answerArr = [
-      {
-        id: 1,
-        answer: 'Answer 1',
-        additionalClauseText: 'Clause text {{placeholder1}}',
-        children: {
-          answers: [
-            {
-              id: 2,
-              answer: 'Answer 2',
-              additionalClauseText: null,
-              children: null,
-            },
-          ],
-        },
+  it('should map the entity to the page DTO correctly', () => {
+    const sets = [{
+      id: 1,
+      title: 'Set Title',
+      legalProvisionSupportType: { value: { en: 'Support Type' } },
+      languages: ['en', 'fr'],
+      guidelines: 'Some guidelines',
+      createdAt: '2024-08-01',
+      validFromDate: '2024-08-15',
+      updatedAt: '2024-08-10',
+      expirationDate: '2025-08-15',
+      applicationPerimeter: {
+        value: { geographicalArea: ['US', 'EU'] },
       },
-    ];
+    }];
+    const count = 10;
+    const page = 1;
+    const elements = 5;
+    const language = 'en';
+    const currentUrl = 'http://example.com';
 
-    const expected = [
-      {
-        id: 1,
-        title: 'Answer 1',
-        message: 'Clause text {{placeholder1}}',
-        ansPlacheolder: ['placeholder1'],
-        children: [],
-      },
-      {
-        id: 2,
-        title: 'Answer 2',
-        message: '',
-        ansPlacheolder: [],
-      },
-    ];
+    generateUrl.mockImplementation(options => `${options.currentUrl}?page=${options.page}`);
 
-    const result = flatQuestionTreeAnswers(answerArr);
+    const expectedMappedSets = [{
+      id: 1,
+      title: 'Set Title',
+      setType: 'Support Type',
+      languages: ['en', 'fr'],
+      guidelines: 'Some guidelines',
+      _links: { preview: null, download: null, questions: null },
+      creationDate: '2024-08-01',
+      validBeginDate: '2024-08-15',
+      updateDate: '2024-08-10',
+      validEndDate: '2025-08-15',
+      geographicalArea: ['US', 'EU'],
+    }];
 
-    expect(result).toEqual(expected);
+    const expectedLinks = {
+      current: 'http://example.com',
+      previous: 'http://example.com?page=0',
+      next: 'http://example.com?page=2',
+      first: 'http://example.com?page=1',
+      last: 'http://example.com?page=2',
+    };
+
+    const result = mapEntityToPageDTO({ sets, count, page, elements, language, currentUrl });
+
+    expect(result.sets).toEqual(expectedMappedSets);
+    expect(result.totalElements).toBe(count);
+    expect(result.totalPages).toBe(2);
+    expect(result.page).toBe(page);
+    expect(result.elements).toBe(expectedMappedSets.length);
+    expect(result._links).toEqual(expectedLinks);
   });
 
-  it('should handle answers with no additionalClauseText', () => {
-    const answerArr = [
-      {
-        id: 1,
-        answer: 'Answer 1',
-        additionalClauseText: null,
-        children: null,
-      },
-    ];
+  it('should handle an empty sets array', () => {
+    const sets = [];
+    const count = 0;
+    const page = 1;
+    const elements = 5;
+    const language = 'en';
+    const currentUrl = 'http://example.com';
 
-    const expected = [
-      {
-        id: 1,
-        title: 'Answer 1',
-        message: '',
-        ansPlacheolder: [],
-      },
-    ];
+    generateUrl.mockImplementation(options => `${options.currentUrl}?page=${options.page}`);
 
-    const result = flatQuestionTreeAnswers(answerArr);
+    const result = mapEntityToPageDTO({ sets, count, page, elements, language, currentUrl });
 
-    expect(result).toEqual(expected);
+    expect(result.sets).toEqual([]);
+    expect(result.totalElements).toBe(count);
+    expect(result.totalPages).toBe(1);
+    expect(result.page).toBe(page);
+    expect(result.elements).toBe(0);
+    expect(result._links).toEqual({
+      current: 'http://example.com',
+      previous: 'http://example.com?page=0',
+      next: 'http://example.com?page=2',
+      first: 'http://example.com?page=1',
+      last: 'http://example.com?page=1',
+    });
   });
 
-  it('should handle empty input array', () => {
-    const result = flatQuestionTreeAnswers([]);
-    expect(result).toEqual([]);
+  it('should handle missing geographicalArea in set', () => {
+    const sets = [{
+      id: 1,
+      title: 'Set Title',
+      legalProvisionSupportType: { value: { en: 'Support Type' } },
+      languages: ['en', 'fr'],
+      guidelines: 'Some guidelines',
+      createdAt: '2024-08-01',
+      validFromDate: '2024-08-15',
+      updatedAt: '2024-08-10',
+      expirationDate: '2025-08-15',
+    }];
+    const count = 10;
+    const page = 1;
+    const elements = 5;
+    const language = 'en';
+    const currentUrl = 'http://example.com';
+
+    generateUrl.mockImplementation(options => `${options.currentUrl}?page=${options.page}`);
+
+    const result = mapEntityToPageDTO({ sets, count, page, elements, language, currentUrl });
+
+    expect(result.sets[0].geographicalArea).toEqual([]);
   });
 
-  it('should handle deeply nested answers', () => {
-    const answerArr = [
-      {
-        id: 1,
-        answer: 'Answer 1',
-        additionalClauseText: 'Text {{placeholder1}}',
-        children: {
-          answers: [
-            {
-              id: 2,
-              answer: 'Answer 2',
-              additionalClauseText: 'Text {{placeholder2}}',
-              children: {
-                answers: [
-                  {
-                    id: 3,
-                    answer: 'Answer 3',
-                    additionalClauseText: null,
-                    children: null,
-                  },
-                ],
-              },
-            },
-          ],
-        },
-      },
-    ];
+  it('should calculate totalPages correctly when elements is greater than 0', () => {
+    const sets = [];
+    const count = 11;
+    const page = 1;
+    const elements = 5;
+    const language = 'en';
+    const currentUrl = 'http://example.com';
 
-    const expected = [
-      {
-        id: 1,
-        title: 'Answer 1',
-        message: 'Text {{placeholder1}}',
-        ansPlacheolder: ['placeholder1'],
-        children: [],
-      },
-      {
-        id: 2,
-        title: 'Answer 2',
-        message: 'Text {{placeholder2}}',
-        ansPlacheolder: ['placeholder2'],
-        children: [],
-      },
-      {
-        id: 3,
-        title: 'Answer 3',
-        message: '',
-        ansPlacheolder: [],
-      },
-    ];
+    generateUrl.mockImplementation(options => `${options.currentUrl}?page=${options.page}`);
 
-    const result = flatQuestionTreeAnswers(answerArr);
+    const result = mapEntityToPageDTO({ sets, count, page, elements, language, currentUrl });
 
-    expect(result).toEqual(expected);
+    expect(result.totalPages).toBe(3);  // 11 / 5 = 2.2 => 3 pages
+  });
+
+  it('should calculate totalPages as 1 when elements is 0', () => {
+    const sets = [];
+    const count = 0;
+    const page = 1;
+    const elements = 0;
+    const language = 'en';
+    const currentUrl = 'http://example.com';
+
+    generateUrl.mockImplementation(options => `${options.currentUrl}?page=${options.page}`);
+
+    const result = mapEntityToPageDTO({ sets, count, page, elements, language, currentUrl });
+
+    expect(result.totalPages).toBe(1);  // Since elements is 0, totalPages defaults to 1
+  });
+
+  it('should handle page links correctly when on the last page', () => {
+    const sets = [];
+    const count = 10;
+    const page = 2;
+    const elements = 5;
+    const language = 'en';
+    const currentUrl = 'http://example.com';
+
+    generateUrl.mockImplementation(options => `${options.currentUrl}?page=${options.page}`);
+
+    const result = mapEntityToPageDTO({ sets, count, page, elements, language, currentUrl });
+
+    expect(result._links.previous).toBe('http://example.com?page=1');
+    expect(result._links.next).toBe('http://example.com?page=3');
   });
 });
