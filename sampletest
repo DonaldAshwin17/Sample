@@ -1,27 +1,153 @@
-// Assume data is the array of records retrieved from the database
-const data = [
-  // Example records
-  { clauseSubthemes: ['theme1', 'theme2'], setSubtheme: 'theme1, theme3' },
-  { clauseSubthemes: ['theme4'], setSubtheme: 'theme2' },
-  // ... other records
-];
 
-const subthemes = ['theme1', 'theme2']; // Your array of subthemes
+describe('flatQuestionTreeAnswers', () => {
+  const pattern = /{{(.*?)}}/g;
 
-// Function to check if any subtheme exists in the JSONB array
-const isInClauseSubthemes = (clauseSubthemes: string[], subthemes: string[]): boolean => {
-  return subthemes.some(theme => clauseSubthemes.includes(theme));
-};
+  it('should flatten a nested question tree with no children', () => {
+    const answerArr = [
+      {
+        id: 1,
+        answer: 'Answer 1',
+        additionalClauseText: 'Clause text {{placeholder1}}',
+        children: null,
+      },
+    ];
 
-// Function to check if any subtheme exists in the text column
-const isInSetSubtheme = (setSubtheme: string, subthemes: string[]): boolean => {
-  return subthemes.some(theme => setSubtheme.includes(theme));
-};
+    const expected = [
+      {
+        id: 1,
+        title: 'Answer 1',
+        message: 'Clause text {{placeholder1}}',
+        ansPlacheolder: ['placeholder1'],
+      },
+    ];
 
-// Filter records based on the presence of any subtheme in clauseSubthemes or setSubtheme
-const filteredData = data.filter(record => 
-  isInClauseSubthemes(record.clauseSubthemes, subthemes) || 
-  isInSetSubtheme(record.setSubtheme, subthemes)
-);
+    const result = flatQuestionTreeAnswers(answerArr);
 
-console.log(filteredData);
+    expect(result).toEqual(expected);
+  });
+
+  it('should flatten a nested question tree with children', () => {
+    const answerArr = [
+      {
+        id: 1,
+        answer: 'Answer 1',
+        additionalClauseText: 'Clause text {{placeholder1}}',
+        children: {
+          answers: [
+            {
+              id: 2,
+              answer: 'Answer 2',
+              additionalClauseText: null,
+              children: null,
+            },
+          ],
+        },
+      },
+    ];
+
+    const expected = [
+      {
+        id: 1,
+        title: 'Answer 1',
+        message: 'Clause text {{placeholder1}}',
+        ansPlacheolder: ['placeholder1'],
+        children: [],
+      },
+      {
+        id: 2,
+        title: 'Answer 2',
+        message: '',
+        ansPlacheolder: [],
+      },
+    ];
+
+    const result = flatQuestionTreeAnswers(answerArr);
+
+    expect(result).toEqual(expected);
+  });
+
+  it('should handle answers with no additionalClauseText', () => {
+    const answerArr = [
+      {
+        id: 1,
+        answer: 'Answer 1',
+        additionalClauseText: null,
+        children: null,
+      },
+    ];
+
+    const expected = [
+      {
+        id: 1,
+        title: 'Answer 1',
+        message: '',
+        ansPlacheolder: [],
+      },
+    ];
+
+    const result = flatQuestionTreeAnswers(answerArr);
+
+    expect(result).toEqual(expected);
+  });
+
+  it('should handle empty input array', () => {
+    const result = flatQuestionTreeAnswers([]);
+    expect(result).toEqual([]);
+  });
+
+  it('should handle deeply nested answers', () => {
+    const answerArr = [
+      {
+        id: 1,
+        answer: 'Answer 1',
+        additionalClauseText: 'Text {{placeholder1}}',
+        children: {
+          answers: [
+            {
+              id: 2,
+              answer: 'Answer 2',
+              additionalClauseText: 'Text {{placeholder2}}',
+              children: {
+                answers: [
+                  {
+                    id: 3,
+                    answer: 'Answer 3',
+                    additionalClauseText: null,
+                    children: null,
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    ];
+
+    const expected = [
+      {
+        id: 1,
+        title: 'Answer 1',
+        message: 'Text {{placeholder1}}',
+        ansPlacheolder: ['placeholder1'],
+        children: [],
+      },
+      {
+        id: 2,
+        title: 'Answer 2',
+        message: 'Text {{placeholder2}}',
+        ansPlacheolder: ['placeholder2'],
+        children: [],
+      },
+      {
+        id: 3,
+        title: 'Answer 3',
+        message: '',
+        ansPlacheolder: [],
+      },
+    ];
+
+    const result = flatQuestionTreeAnswers(answerArr);
+
+    expect(result).toEqual(expected);
+  });
+});
