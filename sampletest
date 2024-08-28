@@ -1,64 +1,56 @@
-import { createWhereClause, getSetByIdWhereClause, createWhereClauseWithThematic } from './your-file-name';
-import { Raw, In } from 'typeorm';
+import { generateUrl, getCurrentUrlFromRequest } from './your-file-name';
 
-// Mock the getDateToIsoString function
-jest.mock('./date', () => ({
-    getDateToIsoString: jest.fn((date) => date.toISOString()),
-}));
-
-describe('createWhereClause', () => {
-    it('should create where clause with title', () => {
-        const whereClause = createWhereClause('test', null, null, null);
-        expect(whereClause.title).toBeDefined();
-        expect(whereClause.validFromDate).toBeDefined();
-        expect(whereClause.expirationDate).toBeDefined();
+describe('generateUrl', () => {
+    it('should return undefined if page is 1 or equal to totalPages', () => {
+        expect(generateUrl({ page: 1, currentUrl: 'http://example.com', totalPages: 5 })).toBeUndefined();
+        expect(generateUrl({ page: 5, currentUrl: 'http://example.com', totalPages: 5 })).toBeUndefined();
     });
 
-    it('should create where clause with languages', () => {
-        const whereClause = createWhereClause(null, null, ['en', 'es'], null);
-        expect(whereClause.languages).toBeDefined();
+    it('should return a URL with the page query param when other query params exist', () => {
+        const result = generateUrl({ page: 3, currentUrl: 'http://example.com?foo=bar&baz=qux', totalPages: 5 });
+        expect(result).toBe('http://example.com?foo=bar&baz=qux&page=3');
     });
 
-    it('should create where clause with ids', () => {
-        const whereClause = createWhereClause(null, null, null, ['1', '2']);
-        expect(whereClause.id).toBeDefined();
+    it('should return a URL with the page query param when page already exists', () => {
+        const result = generateUrl({ page: 2, currentUrl: 'http://example.com?foo=bar&page=1&baz=qux', totalPages: 5 });
+        expect(result).toBe('http://example.com?foo=bar&page=2&baz=qux');
     });
 
-    it('should create where clause with legalProvisionSupportTypeList', () => {
-        const whereClauses = createWhereClause(null, ['1', '2'], null, null);
-        expect(whereClauses).toBeInstanceOf(Array);
-        expect(whereClauses.length).toBe(2);
+    it('should return a URL with only the page query param when no other query params exist', () => {
+        const result = generateUrl({ page: 2, currentUrl: 'http://example.com', totalPages: 5 });
+        expect(result).toBe('http://example.com?page=2');
     });
 
-    it('should handle null values correctly', () => {
-        const whereClause = createWhereClause(null, null, null, null);
-        expect(whereClause).toBeDefined();
+    it('should correctly handle URLs with no existing query params', () => {
+        const result = generateUrl({ page: 2, currentUrl: 'http://example.com?', totalPages: 5 });
+        expect(result).toBe('http://example.com?page=2');
     });
 });
 
-describe('getSetByIdWhereClause', () => {
-    it('should create a where clause with id', () => {
-        const whereClause = getSetByIdWhereClause('123');
-        expect(whereClause.id).toBe('123');
-        expect(whereClause.validFromDate).toBeDefined();
-        expect(whereClause.expirationDate).toBeDefined();
-    });
-});
+describe('getCurrentUrlFromRequest', () => {
+    it('should return the full URL from the request object', () => {
+        const request = {
+            protocol: 'http',
+            headers: {
+                host: 'example.com',
+            },
+            url: '/path?foo=bar',
+        };
 
-describe('createWhereClauseWithThematic', () => {
-    it('should create where clause with languages and subthemes', () => {
-        const whereClause = createWhereClauseWithThematic(['en'], ['theme1'], 'geographicalArea1');
-        expect(whereClause.languages).toBeDefined();
-    });
-
-    it('should create where clause without optional parameters', () => {
-        const whereClause = createWhereClauseWithThematic(null, null, null);
-        expect(whereClause).toBeDefined();
+        const result = getCurrentUrlFromRequest(request);
+        expect(result).toBe('http://example.com/path?foo=bar');
     });
 
-    it('should handle the case where subthemes are passed', () => {
-        const consoleSpy = jest.spyOn(console, 'log');
-        createWhereClauseWithThematic(null, ['subtheme1'], 'geographicalArea1');
-        expect(consoleSpy).toHaveBeenCalledWith("", ['subtheme1'], 'geographicalArea1');
+    it('should handle HTTPS protocol correctly', () => {
+        const request = {
+            protocol: 'https',
+            headers: {
+                host: 'secure.com',
+            },
+            url: '/secure-path',
+        };
+
+        const result = getCurrentUrlFromRequest(request);
+        expect(result).toBe('https://secure.com/secure-path');
     });
 });
