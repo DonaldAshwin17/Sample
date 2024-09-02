@@ -1,74 +1,41 @@
-import { getTemplatePurposeNumber } from './path-to-your-file'; // Adjust the import path as needed
-import * as mammoth from 'mammoth';
+import { previewSet } from './path-to-your-file'; // Adjust the import path
+import { fetchSetById } from './path-to-fetchSetById'; // Adjust the import path
+import { updateCurrentPreview } from './path-to-updateCurrentPreview'; // Adjust the import path
 
-jest.mock('mammoth', () => ({
-  extractRawText: jest.fn(),
+jest.mock('./path-to-fetchSetById', () => ({
+  fetchSetById: jest.fn(),
 }));
 
-describe('getTemplatePurposeNumber', () => {
-  afterEach(() => {
+jest.mock('./path-to-updateCurrentPreview', () => ({
+  updateCurrentPreview: jest.fn(),
+}));
+
+describe('previewSet', () => {
+  const dispatchMock = jest.fn();
+
+  beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should return purposeNumber as 0 if disclaimers are empty or not an array', async () => {
-    const template = {};
-    const disclaimers = null;
+  it('should fetch set by id and dispatch updateCurrentPreview with the fetched set', async () => {
+    const mockSet = { id: 1, name: 'Sample Set' };
+    fetchSetById.mockResolvedValue(mockSet);
 
-    const result = await getTemplatePurposeNumber(template, disclaimers);
+    await previewSet(1)(dispatchMock);
 
-    expect(result).toEqual({
-      purposeNumber: 0,
-      isValid: true,
-    });
+    expect(fetchSetById).toHaveBeenCalledWith(1);
+    expect(dispatchMock).toHaveBeenCalledWith(updateCurrentPreview(mockSet));
   });
 
-  it('should call readFileAsArrayBuffer if template is an instance of File', async () => {
-    const mockFile = new Blob(['test'], { type: 'text/plain' });
-    const disclaimers = ['disclaimer1', 'disclaimer2'];
+  it('should handle fetchSetById rejection', async () => {
+    const error = new Error('Fetch failed');
+    fetchSetById.mockRejectedValue(error);
 
-    const arrayBuffer = new ArrayBuffer(8);
-    const readFileAsArrayBufferMock = jest.fn().mockResolvedValue(arrayBuffer);
-    global.readFileAsArrayBuffer = readFileAsArrayBufferMock;
-
-    mammoth.extractRawText.mockResolvedValue({ value: 'mockValue' });
-
-    const result = await getTemplatePurposeNumber(mockFile, disclaimers);
-
-    expect(readFileAsArrayBufferMock).toHaveBeenCalledWith(mockFile);
-    expect(result).toEqual({
-      purposeNumber: disclaimers.length,
-      isValid: true,
-    });
-  });
-
-  it('should return isValid as false if purposeNumber does not match totalDisclaimers', async () => {
-    const template = {};
-    const disclaimers = ['disclaimer1'];
-
-    const arrayBuffer = new ArrayBuffer(8);
-    mammoth.extractRawText.mockResolvedValue({ value: '+++INS ${purpose}1.value +++' });
-
-    const result = await getTemplatePurposeNumber(arrayBuffer, disclaimers);
-
-    expect(result).toEqual({
-      purposeNumber: 1,
-      isValid: false,
-    });
-  });
-
-  it('should catch and log errors during parsing', async () => {
-    const template = {};
-    const disclaimers = ['disclaimer1'];
-
-    const error = new Error('Test error');
-    mammoth.extractRawText.mockRejectedValue(error);
-
-    const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
-
-    await getTemplatePurposeNumber(template, disclaimers);
-
-    expect(consoleSpy).toHaveBeenCalledWith('Error during parsing docx file', error);
-
-    consoleSpy.mockRestore();
+    try {
+      await previewSet(1)(dispatchMock);
+    } catch (e) {
+      expect(fetchSetById).toHaveBeenCalledWith(1);
+      expect(dispatchMock).not.toHaveBeenCalled();
+    }
   });
 });
