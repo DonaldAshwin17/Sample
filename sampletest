@@ -1,56 +1,61 @@
-import { generateUrl, getCurrentUrlFromRequest } from './your-file-name';
+import { deleteSetById } from './path-to-your-file'; // Adjust the import path as needed
+import * as api from '../path-to-api'; // Mock the api module, adjust the import path as needed
+import { initDialog } from '../dialog/dialog.actions'; // Adjust the import path as needed
+import { fetchSetList } from '../path-to-fetchSetList'; // Adjust the import path as needed
 
-describe('generateUrl', () => {
-    it('should return undefined if page is 1 or equal to totalPages', () => {
-        expect(generateUrl({ page: 1, currentUrl: 'http://example.com', totalPages: 5 })).toBeUndefined();
-        expect(generateUrl({ page: 5, currentUrl: 'http://example.com', totalPages: 5 })).toBeUndefined();
-    });
+jest.mock('../path-to-api'); // Mocking the api module
+jest.mock('../dialog/dialog.actions'); // Mocking the dialog actions
+jest.mock('../path-to-fetchSetList'); // Mocking fetchSetList action
 
-    it('should return a URL with the page query param when other query params exist', () => {
-        const result = generateUrl({ page: 3, currentUrl: 'http://example.com?foo=bar&baz=qux', totalPages: 5 });
-        expect(result).toBe('http://example.com?foo=bar&baz=qux&page=3');
-    });
+describe('deleteSetById', () => {
+  let dispatchMock;
 
-    it('should return a URL with the page query param when page already exists', () => {
-        const result = generateUrl({ page: 2, currentUrl: 'http://example.com?foo=bar&page=1&baz=qux', totalPages: 5 });
-        expect(result).toBe('http://example.com?foo=bar&page=2&baz=qux');
-    });
+  beforeEach(() => {
+    dispatchMock = jest.fn();
+  });
 
-    it('should return a URL with only the page query param when no other query params exist', () => {
-        const result = generateUrl({ page: 2, currentUrl: 'http://example.com', totalPages: 5 });
-        expect(result).toBe('http://example.com?page=2');
-    });
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
 
-    it('should correctly handle URLs with no existing query params', () => {
-        const result = generateUrl({ page: 2, currentUrl: 'http://example.com?', totalPages: 5 });
-        expect(result).toBe('http://example.com?page=2');
-    });
-});
+  it('should dispatch actions and resolve both promises successfully', async () => {
+    const mockId = '123';
+    const mockUserToModify = 'userA';
 
-describe('getCurrentUrlFromRequest', () => {
-    it('should return the full URL from the request object', () => {
-        const request = {
-            protocol: 'http',
-            headers: {
-                host: 'example.com',
-            },
-            url: '/path?foo=bar',
-        };
+    // Mock API calls
+    api.delete = jest.fn().mockResolvedValue({ data: 'deleted' });
+    api.post = jest.fn().mockResolvedValue({ data: 'saved' });
 
-        const result = getCurrentUrlFromRequest(request);
-        expect(result).toBe('http://example.com/path?foo=bar');
-    });
+    await deleteSetById(mockId, mockUserToModify)(dispatchMock);
 
-    it('should handle HTTPS protocol correctly', () => {
-        const request = {
-            protocol: 'https',
-            headers: {
-                host: 'secure.com',
-            },
-            url: '/secure-path',
-        };
+    // Check dispatch calls for fetchSetList and initDialog
+    expect(api.delete).toHaveBeenCalledWith(`${constants.API_V1_URL}/sets/${mockId}`);
+    expect(api.post).toHaveBeenCalledWith(`${constants.API_V1_URL}/browser-history/browser-history-set`, expect.objectContaining({
+      createdBy: mockUserToModify,
+      relId: mockId,
+    }));
 
-        const result = getCurrentUrlFromRequest(request);
-        expect(result).toBe('https://secure.com/secure-path');
-    });
+    expect(dispatchMock).toHaveBeenCalledWith(fetchSetList());
+    expect(dispatchMock).toHaveBeenCalledWith(initDialog());
+
+    // Check if the promises were resolved correctly
+    expect(api.delete).toHaveBeenCalledTimes(1);
+    expect(api.post).toHaveBeenCalledTimes(1);
+  });
+
+  it('should catch and log errors', async () => {
+    const mockId = '123';
+    const mockUserToModify = 'userA';
+    const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    // Mock API call to throw an error
+    api.delete = jest.fn().mockRejectedValue(new Error('API delete failed'));
+    api.post = jest.fn().mockRejectedValue(new Error('API post failed'));
+
+    await deleteSetById(mockId, mockUserToModify)(dispatchMock);
+
+    expect(consoleSpy).toHaveBeenCalledWith(expect.any(Error));
+
+    consoleSpy.mockRestore();
+  });
 });
