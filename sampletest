@@ -1,55 +1,73 @@
-import { fetchSetList } from './path-to-your-file'; // Adjust the import path as needed
-import * as api from '../path-to-api'; // Adjust the import path as needed
-import { fetchSetListSuccess } from '../path-to-actions'; // Adjust the import path as needed
+import { getTemplatePurposeNumber } from './path-to-your-file'; // Adjust the import path as needed
+import * as mammoth from 'mammoth';
 
-jest.mock('../path-to-api'); // Mock the api module
-jest.mock('../path-to-actions'); // Mock the action creators
+jest.mock('mammoth', () => ({
+  extractRawText: jest.fn(),
+}));
 
-describe('fetchSetList', () => {
-  let dispatchMock;
-
-  beforeEach(() => {
-    dispatchMock = jest.fn();
-  });
-
+describe('getTemplatePurposeNumber', () => {
   afterEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should call API without queryParams and dispatch fetchSetListSuccess', async () => {
-    const setListResponse = {
-      list: [
-        { dispositions: [{ dispositionId: '1' }], rest: { id: 1, name: 'Set 1' } },
-        { dispositions: [{ dispositionId: '2' }], rest: { id: 2, name: 'Set 2' } },
-      ],
-      count: 2,
-    };
+  it('should return purposeNumber as 0 if disclaimers are empty or not an array', async () => {
+    const template = {};
+    const disclaimers = null;
 
-    api.get = jest.fn().mockResolvedValue(setListResponse);
+    const result = await getTemplatePurposeNumber(template, disclaimers);
 
-    await fetchSetList(null)(dispatchMock);
-
-    expect(api.get).toHaveBeenCalledWith(`${constants.API_V1_URL}/sets`);
-    expect(dispatchMock).toHaveBeenCalledWith(
-      fetchSetListSuccess(
-        [
-          { id: 1, name: 'Set 1', disclaimers: ['1'] },
-          { id: 2, name: 'Set 2', disclaimers: ['2'] },
-        ],
-        2
-      )
-    );
+    expect(result).toEqual({
+      purposeNumber: 0,
+      isValid: true,
+    });
   });
 
-  it('should catch and log errors', async () => {
+  it('should call readFileAsArrayBuffer if template is an instance of File', async () => {
+    const mockFile = new Blob(['test'], { type: 'text/plain' });
+    const disclaimers = ['disclaimer1', 'disclaimer2'];
+
+    const arrayBuffer = new ArrayBuffer(8);
+    const readFileAsArrayBufferMock = jest.fn().mockResolvedValue(arrayBuffer);
+    global.readFileAsArrayBuffer = readFileAsArrayBufferMock;
+
+    mammoth.extractRawText.mockResolvedValue({ value: 'mockValue' });
+
+    const result = await getTemplatePurposeNumber(mockFile, disclaimers);
+
+    expect(readFileAsArrayBufferMock).toHaveBeenCalledWith(mockFile);
+    expect(result).toEqual({
+      purposeNumber: disclaimers.length,
+      isValid: true,
+    });
+  });
+
+  it('should return isValid as false if purposeNumber does not match totalDisclaimers', async () => {
+    const template = {};
+    const disclaimers = ['disclaimer1'];
+
+    const arrayBuffer = new ArrayBuffer(8);
+    mammoth.extractRawText.mockResolvedValue({ value: '+++INS ${purpose}1.value +++' });
+
+    const result = await getTemplatePurposeNumber(arrayBuffer, disclaimers);
+
+    expect(result).toEqual({
+      purposeNumber: 1,
+      isValid: false,
+    });
+  });
+
+  it('should catch and log errors during parsing', async () => {
+    const template = {};
+    const disclaimers = ['disclaimer1'];
+
+    const error = new Error('Test error');
+    mammoth.extractRawText.mockRejectedValue(error);
+
     const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
 
-    // Mock API call to throw an error
-    api.get = jest.fn().mockRejectedValue(new Error('API get failed'));
+    await getTemplatePurposeNumber(template, disclaimers);
 
-    await fetchSetList(null)(dispatchMock);
-
-    expect(consoleSpy).toHaveBeenCalledWith(expect.any(Error));
+    expect(consoleSpy).toHaveBeenCalledWith('Error during parsing docx file', error);
 
     consoleSpy.mockRestore();
   });
