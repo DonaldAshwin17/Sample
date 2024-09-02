@@ -1,13 +1,11 @@
-import { deleteSetById } from './path-to-your-file'; // Adjust the import path as needed
-import * as api from '../path-to-api'; // Mock the api module, adjust the import path as needed
-import { initDialog } from '../dialog/dialog.actions'; // Adjust the import path as needed
-import { fetchSetList } from '../path-to-fetchSetList'; // Adjust the import path as needed
+import { fetchSetList } from './path-to-your-file'; // Adjust the import path as needed
+import * as api from '../path-to-api'; // Adjust the import path as needed
+import { fetchSetListSuccess } from '../path-to-actions'; // Adjust the import path as needed
 
-jest.mock('../path-to-api'); // Mocking the api module
-jest.mock('../dialog/dialog.actions'); // Mocking the dialog actions
-jest.mock('../path-to-fetchSetList'); // Mocking fetchSetList action
+jest.mock('../path-to-api'); // Mock the api module
+jest.mock('../path-to-actions'); // Mock the action creators
 
-describe('deleteSetById', () => {
+describe('fetchSetList', () => {
   let dispatchMock;
 
   beforeEach(() => {
@@ -18,41 +16,38 @@ describe('deleteSetById', () => {
     jest.clearAllMocks();
   });
 
-  it('should dispatch actions and resolve both promises successfully', async () => {
-    const mockId = '123';
-    const mockUserToModify = 'userA';
+  it('should call API without queryParams and dispatch fetchSetListSuccess', async () => {
+    const setListResponse = {
+      list: [
+        { dispositions: [{ dispositionId: '1' }], rest: { id: 1, name: 'Set 1' } },
+        { dispositions: [{ dispositionId: '2' }], rest: { id: 2, name: 'Set 2' } },
+      ],
+      count: 2,
+    };
 
-    // Mock API calls
-    api.delete = jest.fn().mockResolvedValue({ data: 'deleted' });
-    api.post = jest.fn().mockResolvedValue({ data: 'saved' });
+    api.get = jest.fn().mockResolvedValue(setListResponse);
 
-    await deleteSetById(mockId, mockUserToModify)(dispatchMock);
+    await fetchSetList(null)(dispatchMock);
 
-    // Check dispatch calls for fetchSetList and initDialog
-    expect(api.delete).toHaveBeenCalledWith(`${constants.API_V1_URL}/sets/${mockId}`);
-    expect(api.post).toHaveBeenCalledWith(`${constants.API_V1_URL}/browser-history/browser-history-set`, expect.objectContaining({
-      createdBy: mockUserToModify,
-      relId: mockId,
-    }));
-
-    expect(dispatchMock).toHaveBeenCalledWith(fetchSetList());
-    expect(dispatchMock).toHaveBeenCalledWith(initDialog());
-
-    // Check if the promises were resolved correctly
-    expect(api.delete).toHaveBeenCalledTimes(1);
-    expect(api.post).toHaveBeenCalledTimes(1);
+    expect(api.get).toHaveBeenCalledWith(`${constants.API_V1_URL}/sets`);
+    expect(dispatchMock).toHaveBeenCalledWith(
+      fetchSetListSuccess(
+        [
+          { id: 1, name: 'Set 1', disclaimers: ['1'] },
+          { id: 2, name: 'Set 2', disclaimers: ['2'] },
+        ],
+        2
+      )
+    );
   });
 
   it('should catch and log errors', async () => {
-    const mockId = '123';
-    const mockUserToModify = 'userA';
     const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
 
     // Mock API call to throw an error
-    api.delete = jest.fn().mockRejectedValue(new Error('API delete failed'));
-    api.post = jest.fn().mockRejectedValue(new Error('API post failed'));
+    api.get = jest.fn().mockRejectedValue(new Error('API get failed'));
 
-    await deleteSetById(mockId, mockUserToModify)(dispatchMock);
+    await fetchSetList(null)(dispatchMock);
 
     expect(consoleSpy).toHaveBeenCalledWith(expect.any(Error));
 
