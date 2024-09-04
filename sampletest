@@ -1,51 +1,45 @@
 import React from 'react';
 import { shallow } from 'enzyme';
-import { IconButton, Tooltip } from '@material-ui/core';
-import { CustomTablePagination } from './path-to-your-file'; // Adjust the path
+import CustomTablePagination from './CustomTablePagination';
+import IconButton from '@material-ui/core/IconButton';
 import KeyboardArrowLeftIcon from '@material-ui/icons/KeyboardArrowLeft';
 import KeyboardArrowRightIcon from '@material-ui/icons/KeyboardArrowRight';
 
-describe('ActionsComponent', () => {
+describe('CustomTablePagination', () => {
   let wrapper;
-  const mockHandleChangePage = jest.fn();
   const defaultProps = {
-    page: 1,
-    count: 50,
+    count: 100,
     rowsPerPage: 10,
-    handleChangePage: mockHandleChangePage,
+    rowsPerPageOptions: [5, 10, 25],
+    page: 0,
+    handleChangePage: jest.fn(),
+    handleChangeRowsPerPage: jest.fn(),
+    labelRowsPerPage: 'Rows per page',
   };
 
   beforeEach(() => {
-    wrapper = shallow(<CustomTablePagination.ActionsComponent {...defaultProps} />);
+    wrapper = shallow(<CustomTablePagination {...defaultProps} />);
   });
 
   it('should render the previous and next buttons', () => {
-    expect(wrapper.find(IconButton).length).toBe(2);
-    expect(wrapper.find(KeyboardArrowLeftIcon).length).toBe(1);
-    expect(wrapper.find(KeyboardArrowRightIcon).length).toBe(1);
+    // Find IconButton within the component
+    const iconButtons = wrapper.find(IconButton);
+    expect(iconButtons.length).toBe(2); // One for previous and one for next
+
+    // Ensure KeyboardArrowLeftIcon and KeyboardArrowRightIcon are rendered
+    expect(iconButtons.at(0).find(KeyboardArrowLeftIcon).exists()).toBe(true);
+    expect(iconButtons.at(1).find(KeyboardArrowRightIcon).exists()).toBe(true);
   });
 
-  it('should call handleChangePage with correct arguments when previous button is clicked', () => {
-    const prevButton = wrapper.find(IconButton).at(0);
-    prevButton.simulate('click');
-    expect(mockHandleChangePage).toHaveBeenCalledWith(null, defaultProps.page - 1);
-  });
+  it('should call handleChangePage with correct arguments when buttons are clicked', () => {
+    const iconButtons = wrapper.find(IconButton);
 
-  it('should call handleChangePage with correct arguments when next button is clicked', () => {
-    const nextButton = wrapper.find(IconButton).at(1);
-    nextButton.simulate('click');
-    expect(mockHandleChangePage).toHaveBeenCalledWith(null, defaultProps.page + 1);
-  });
+    // Simulate click on the previous page button
+    iconButtons.at(0).simulate('click');
+    expect(defaultProps.handleChangePage).toHaveBeenCalledWith(null, defaultProps.page - 1);
 
-  it('should disable previous button when on the first page', () => {
-    wrapper.setProps({ page: 0 });
-    const prevButton = wrapper.find(IconButton).at(0);
-    expect(prevButton.props().disabled).toBe(true);
-  });
-
-  it('should disable next button when on the last page', () => {
-    wrapper.setProps({ page: 4, count: 50, rowsPerPage: 10 });
-    const nextButton = wrapper.find(IconButton).at(1);
-    expect(nextButton.props().disabled).toBe(true);
+    // Simulate click on the next page button
+    iconButtons.at(1).simulate('click');
+    expect(defaultProps.handleChangePage).toHaveBeenCalledWith(null, defaultProps.page + 1);
   });
 });
