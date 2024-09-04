@@ -1,66 +1,15 @@
-import { storeQuestionTreeData } from './path-to-file';
-import { saveQuestionTreeSuccess, saveQuestionTreeFailure } from './questionTree.action';
+// dialog.index.test.js
+import * as DialogActions from './dialog.actions';
+import reducer from './dialog.reducer';
+import * as DialogModule from './dialog.index'; // Adjust the path as per your file structure
 
-jest.mock('./questionTree.action', () => ({
-  saveQuestionTreeSuccess: jest.fn(),
-  saveQuestionTreeFailure: jest.fn(),
-}));
-
-describe('storeQuestionTreeData', () => {
-  let dispatch;
-
-  beforeEach(() => {
-    dispatch = jest.fn();
+describe('dialog.index.js', () => {
+  it('should export openDialog and closeDialog from dialog.actions', () => {
+    expect(DialogModule.openDialog).toBe(DialogActions.openDialog);
+    expect(DialogModule.closeDialog).toBe(DialogActions.closeDialog);
   });
 
-  it('should dispatch saveQuestionTreeSuccess action', async () => {
-    const qt = { id: 1, name: 'Sample Tree' };
-    await storeQuestionTreeData(qt)(dispatch);
-
-    expect(dispatch).toHaveBeenCalledWith(saveQuestionTreeSuccess(qt));
-  });
-
-  it('should handle errors and dispatch saveQuestionTreeFailure action', async () => {
-    const error = new Error('Test error');
-    const faultyStoreQuestionTreeData = () => { throw error; };
-
-    // Mocking a faulty dispatch
-    await storeQuestionTreeData(faultyStoreQuestionTreeData)(dispatch);
-
-    expect(dispatch).toHaveBeenCalledWith(saveQuestionTreeFailure(error));
-    expect(console.log).toHaveBeenCalledWith('error', error);
-  });
-});
-
-
-import { resetQuestionTreeData } from './path-to-file';
-import { resetQuestionTree } from './questionTree.action';
-
-jest.mock('./questionTree.action', () => ({
-  resetQuestionTree: jest.fn(),
-}));
-
-describe('resetQuestionTreeData', () => {
-  let dispatch;
-
-  beforeEach(() => {
-    dispatch = jest.fn();
-    console.log = jest.fn(); // Mock console.log
-  });
-
-  it('should dispatch resetQuestionTree action', async () => {
-    await resetQuestionTreeData()(dispatch);
-
-    expect(dispatch).toHaveBeenCalledWith(resetQuestionTree());
-    expect(console.log).toHaveBeenCalledWith('REsetting');
-  });
-
-  it('should handle errors in resetQuestionTreeData function', async () => {
-    const error = new Error('Test error');
-    const faultyResetQuestionTreeData = () => { throw error; };
-
-    await resetQuestionTreeData(faultyResetQuestionTreeData)(dispatch);
-
-    expect(console.log).toHaveBeenCalledWith('Some error occured: ', error);
+  it('should export reducer as default', () => {
+    expect(DialogModule.default).toBe(reducer);
   });
 });
