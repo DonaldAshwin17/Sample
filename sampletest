@@ -1,41 +1,51 @@
-import { previewSet } from './path-to-your-file'; // Adjust the import path
-import { fetchSetById } from './path-to-fetchSetById'; // Adjust the import path
-import { updateCurrentPreview } from './path-to-updateCurrentPreview'; // Adjust the import path
+import React from 'react';
+import { shallow } from 'enzyme';
+import { IconButton, Tooltip } from '@material-ui/core';
+import { CustomTablePagination } from './path-to-your-file'; // Adjust the path
+import KeyboardArrowLeftIcon from '@material-ui/icons/KeyboardArrowLeft';
+import KeyboardArrowRightIcon from '@material-ui/icons/KeyboardArrowRight';
 
-jest.mock('./path-to-fetchSetById', () => ({
-  fetchSetById: jest.fn(),
-}));
-
-jest.mock('./path-to-updateCurrentPreview', () => ({
-  updateCurrentPreview: jest.fn(),
-}));
-
-describe('previewSet', () => {
-  const dispatchMock = jest.fn();
+describe('ActionsComponent', () => {
+  let wrapper;
+  const mockHandleChangePage = jest.fn();
+  const defaultProps = {
+    page: 1,
+    count: 50,
+    rowsPerPage: 10,
+    handleChangePage: mockHandleChangePage,
+  };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    wrapper = shallow(<CustomTablePagination.ActionsComponent {...defaultProps} />);
   });
 
-  it('should fetch set by id and dispatch updateCurrentPreview with the fetched set', async () => {
-    const mockSet = { id: 1, name: 'Sample Set' };
-    fetchSetById.mockResolvedValue(mockSet);
-
-    await previewSet(1)(dispatchMock);
-
-    expect(fetchSetById).toHaveBeenCalledWith(1);
-    expect(dispatchMock).toHaveBeenCalledWith(updateCurrentPreview(mockSet));
+  it('should render the previous and next buttons', () => {
+    expect(wrapper.find(IconButton).length).toBe(2);
+    expect(wrapper.find(KeyboardArrowLeftIcon).length).toBe(1);
+    expect(wrapper.find(KeyboardArrowRightIcon).length).toBe(1);
   });
 
-  it('should handle fetchSetById rejection', async () => {
-    const error = new Error('Fetch failed');
-    fetchSetById.mockRejectedValue(error);
+  it('should call handleChangePage with correct arguments when previous button is clicked', () => {
+    const prevButton = wrapper.find(IconButton).at(0);
+    prevButton.simulate('click');
+    expect(mockHandleChangePage).toHaveBeenCalledWith(null, defaultProps.page - 1);
+  });
 
-    try {
-      await previewSet(1)(dispatchMock);
-    } catch (e) {
-      expect(fetchSetById).toHaveBeenCalledWith(1);
-      expect(dispatchMock).not.toHaveBeenCalled();
-    }
+  it('should call handleChangePage with correct arguments when next button is clicked', () => {
+    const nextButton = wrapper.find(IconButton).at(1);
+    nextButton.simulate('click');
+    expect(mockHandleChangePage).toHaveBeenCalledWith(null, defaultProps.page + 1);
+  });
+
+  it('should disable previous button when on the first page', () => {
+    wrapper.setProps({ page: 0 });
+    const prevButton = wrapper.find(IconButton).at(0);
+    expect(prevButton.props().disabled).toBe(true);
+  });
+
+  it('should disable next button when on the last page', () => {
+    wrapper.setProps({ page: 4, count: 50, rowsPerPage: 10 });
+    const nextButton = wrapper.find(IconButton).at(1);
+    expect(nextButton.props().disabled).toBe(true);
   });
 });
