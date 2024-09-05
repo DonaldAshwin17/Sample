@@ -1,15 +1,35 @@
-// dialog.index.test.js
-import * as DialogActions from './dialog.actions';
-import reducer from './dialog.reducer';
-import * as DialogModule from './dialog.index'; // Adjust the path as per your file structure
+import React from 'react';
+import { shallow } from 'enzyme';
+import Catalog from './path-to-your-catalog'; // update with the correct path
+import ApiV2CatalogFilter from '../../../components/ApiV2CatalogFilter'; // update the import path
+import ApiV2List from './ApiV2List'; // update the import path
 
-describe('dialog.index.js', () => {
-  it('should export openDialog and closeDialog from dialog.actions', () => {
-    expect(DialogModule.openDialog).toBe(DialogActions.openDialog);
-    expect(DialogModule.closeDialog).toBe(DialogActions.closeDialog);
+describe('Catalog Component', () => {
+  let wrapper;
+
+  beforeEach(() => {
+    wrapper = shallow(<Catalog />);
   });
 
-  it('should export reducer as default', () => {
-    expect(DialogModule.default).toBe(reducer);
+  it('should render without crashing', () => {
+    expect(wrapper.exists()).toBe(true);
+  });
+
+  it('should render the ApiV2CatalogFilter component', () => {
+    expect(wrapper.find(ApiV2CatalogFilter).length).toBe(1);
+  });
+
+  it('should pass correct props to ApiV2CatalogFilter component', () => {
+    const apiV2CatalogFilter = wrapper.find(ApiV2CatalogFilter);
+    expect(apiV2CatalogFilter.prop('take')).toBe(15);
+  });
+
+  it('should render the ApiV2List component', () => {
+    expect(wrapper.find(ApiV2List).length).toBe(1);
+  });
+
+  it('should apply the correct className to the Paper component', () => {
+    const paper = wrapper.find('Paper');
+    expect(paper.prop('className')).toContain('filtersWrapper');
   });
 });
