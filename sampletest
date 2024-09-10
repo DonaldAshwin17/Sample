@@ -1,38 +1,34 @@
-import { getManager } from 'typeorm';
+import { MigrationInterface, QueryRunner } from 'typeorm';
 import * as mammoth from 'mammoth';
 
-async function readAndLogFileData() {
-  // Get the EntityManager to run queries
-  const entityManager = getManager();
+export class ReadFileDataAndLogContents implements MigrationInterface {
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    // Fetch disposition IDs and filedata from the template table
+    const templates = await queryRunner.query(`
+      SELECT dispositionid, filedata FROM template WHERE filedata IS NOT NULL
+    `);
 
-  // Fetch all templates with filedata
-  const templates = await entityManager.query(`
-    SELECT dispositionid, filedata FROM template WHERE filedata IS NOT NULL
-  `);
+    for (const template of templates) {
+      const { dispositionid, filedata } = template;
 
-  for (const template of templates) {
-    const { dispositionid, filedata } = template;
+      // Convert filedata (bytea) to Buffer
+      const fileBuffer = Buffer.from(filedata);
 
-    // Convert filedata (bytea) to Buffer
-    const fileBuffer = Buffer.from(filedata);
+      try {
+        // Use mammoth to extract text from the Word document (docx)
+        const result = await mammoth.extractRawText({ buffer: fileBuffer });
+        const extractedText = result.value;
 
-    try {
-      // Use mammoth to extract text from Word document (docx)
-      const result = await mammoth.extractRawText({ buffer: fileBuffer });
-      const extractedText = result.value;
-
-      // Log the extracted content to the console
-      console.log(`Disposition ID: ${dispositionid}`);
-      console.log('Extracted Content:', extractedText);
-    } catch (error) {
-      console.error(`Error processing filedata for dispositionid: ${dispositionid}`, error);
+        // Log the extracted content to the console
+        console.log(`Disposition ID: ${dispositionid}`);
+        console.log('Extracted Content:', extractedText);
+      } catch (error) {
+        console.error(`Error processing filedata for dispositionid: ${dispositionid}`, error);
+      }
     }
   }
-}
 
-// Call the function to run the script
-readAndLogFileData().then(() => {
-  console.log('Script finished.');
-}).catch((error) => {
-  console.error('Error running script:', error);
-});
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    // No changes needed in the down method as we're only reading the data
+  }
+}
