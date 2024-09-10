@@ -1,35 +1,38 @@
-import React from 'react';
-import { shallow } from 'enzyme';
-import Catalog from './path-to-your-catalog'; // update with the correct path
-import ApiV2CatalogFilter from '../../../components/ApiV2CatalogFilter'; // update the import path
-import ApiV2List from './ApiV2List'; // update the import path
+import { getManager } from 'typeorm';
+import * as mammoth from 'mammoth';
 
-describe('Catalog Component', () => {
-  let wrapper;
+async function readAndLogFileData() {
+  // Get the EntityManager to run queries
+  const entityManager = getManager();
 
-  beforeEach(() => {
-    wrapper = shallow(<Catalog />);
-  });
+  // Fetch all templates with filedata
+  const templates = await entityManager.query(`
+    SELECT dispositionid, filedata FROM template WHERE filedata IS NOT NULL
+  `);
 
-  it('should render without crashing', () => {
-    expect(wrapper.exists()).toBe(true);
-  });
+  for (const template of templates) {
+    const { dispositionid, filedata } = template;
 
-  it('should render the ApiV2CatalogFilter component', () => {
-    expect(wrapper.find(ApiV2CatalogFilter).length).toBe(1);
-  });
+    // Convert filedata (bytea) to Buffer
+    const fileBuffer = Buffer.from(filedata);
 
-  it('should pass correct props to ApiV2CatalogFilter component', () => {
-    const apiV2CatalogFilter = wrapper.find(ApiV2CatalogFilter);
-    expect(apiV2CatalogFilter.prop('take')).toBe(15);
-  });
+    try {
+      // Use mammoth to extract text from Word document (docx)
+      const result = await mammoth.extractRawText({ buffer: fileBuffer });
+      const extractedText = result.value;
 
-  it('should render the ApiV2List component', () => {
-    expect(wrapper.find(ApiV2List).length).toBe(1);
-  });
+      // Log the extracted content to the console
+      console.log(`Disposition ID: ${dispositionid}`);
+      console.log('Extracted Content:', extractedText);
+    } catch (error) {
+      console.error(`Error processing filedata for dispositionid: ${dispositionid}`, error);
+    }
+  }
+}
 
-  it('should apply the correct className to the Paper component', () => {
-    const paper = wrapper.find('Paper');
-    expect(paper.prop('className')).toContain('filtersWrapper');
-  });
+// Call the function to run the script
+readAndLogFileData().then(() => {
+  console.log('Script finished.');
+}).catch((error) => {
+  console.error('Error running script:', error);
 });
