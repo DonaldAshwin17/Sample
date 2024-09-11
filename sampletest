@@ -1,34 +1,62 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import * as mammoth from 'mammoth';
 
-export class ReadFileDataAndLogContents implements MigrationInterface {
+export class UpdateDispositionWithJsonContentAndLogging implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // Fetch disposition IDs and filedata from the template table
-    const templates = await queryRunner.query(`
-      SELECT dispositionid, filedata FROM template WHERE filedata IS NOT NULL
+    // Fetch all unique disposition IDs from the template table
+    const dispositionIds = await queryRunner.query(`
+      SELECT DISTINCT dispositionid FROM template WHERE filedata IS NOT NULL
     `);
 
-    for (const template of templates) {
-      const { dispositionid, filedata } = template;
+    for (const disposition of dispositionIds) {
+      const { dispositionid } = disposition;
 
-      // Convert filedata (bytea) to Buffer
-      const fileBuffer = Buffer.from(filedata);
+      // Fetch all languages and filedata for this dispositionid
+      const templates = await queryRunner.query(`
+        SELECT language, filedata FROM template WHERE dispositionid = $1 AND filedata IS NOT NULL
+      `, [dispositionid]);
 
-      try {
-        // Use mammoth to extract text from the Word document (docx)
-        const result = await mammoth.extractRawText({ buffer: fileBuffer });
-        const extractedText = result.value;
+      const jsonContent = {}; // To store the JSONB content for different languages
 
-        // Log the extracted content to the console
-        console.log(`Disposition ID: ${dispositionid}`);
-        console.log('Extracted Content:', extractedText);
-      } catch (error) {
-        console.error(`Error processing filedata for dispositionid: ${dispositionid}`, error);
+      // Process each template and convert the filedata based on language
+      for (const template of templates) {
+        const { language, filedata } = template;
+
+        // Convert filedata (bytea) to Buffer
+        const fileBuffer = Buffer.from(filedata);
+
+        try {
+          // Extract the raw text from the Word document using mammoth
+          const result = await mammoth.extractRawText({ buffer: fileBuffer });
+          const extractedText = result.value;
+
+          // Build the JSON object with the format message_<language>
+          jsonContent[`message_${language}`] = extractedText;
+
+        } catch (error) {
+          console.error(`Error processing filedata for dispositionid: ${dispositionid}, language: ${language}`, error);
+        }
       }
+
+      // Log dispositionId and associated JSONB content before saving
+      console.log(`Disposition ID: ${dispositionid}`);
+      console.log('JSONB Content:', JSON.stringify(jsonContent, null, 2));
+
+      // Update the disposition table with the built JSON content
+      await queryRunner.query(`
+        UPDATE disposition
+        SET main_content = $1
+        WHERE id = $2
+      `, [jsonContent, dispositionid]);
     }
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    // No changes needed in the down method as we're only reading the data
+    // Optional: Revert the update if necessary
+    await queryRunner.query(`
+      UPDATE disposition
+      SET main_content = NULL
+      WHERE main_content IS NOT NULL
+    `);
   }
 }
