@@ -19,7 +19,7 @@ const PlaceholderReplacer = ({ htmlString }) => {
           />
         );
       }
-      return part;
+      return <span key={index}>{part}</span>; // Keep other HTML intact
     });
   };
 
@@ -33,7 +33,7 @@ const PlaceholderReplacer = ({ htmlString }) => {
 
   return (
     <div>
-      <div dangerouslySetInnerHTML={{ __html: renderHtml() }} />
+      <div>{renderHtml()}</div>
       <div>{getFinalHtml()}</div>
     </div>
   );
