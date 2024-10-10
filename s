@@ -31,7 +31,7 @@ const DynamicTextboxes = ({ initialHtml }) => {
     return processedHtml;
   };
 
-  // Function to replace placeholders with the input values
+  // Function to replace placeholders with the input values and return updated HTML
   const replacePlaceholdersWithValues = () => {
     const inputs = document.querySelectorAll('input[data-placeholder]');
     let updatedHtml = htmlContent;
@@ -41,13 +41,14 @@ const DynamicTextboxes = ({ initialHtml }) => {
       const value = input.value || input.placeholder; // Use placeholder if input is empty
       const placeholder = input.getAttribute('data-placeholder');
 
+      // Replace only one occurrence of the matching placeholder
       updatedHtml = updatedHtml.replace(
         new RegExp(`\\[\\$${placeholder}\\$\\]`), 
         value
       );
     });
 
-    setHtmlContent(updatedHtml); // Update state with replaced values
+    return updatedHtml; // Return the updated HTML string
   };
 
   // Function to dynamically resize the textbox and update its value in the state
@@ -63,13 +64,20 @@ const DynamicTextboxes = ({ initialHtml }) => {
     input.style.width = `${input.value.length + 2}ch`; // Adjust width dynamically
   };
 
+  // When button is clicked, replace placeholders and log the updated HTML
+  const handleReplaceAndLog = () => {
+    const updatedHtml = replacePlaceholdersWithValues();
+    console.log("Updated HTML:", updatedHtml);
+    setHtmlContent(updatedHtml); // Optional: Update the displayed HTML after replacement
+  };
+
   return (
     <div>
       <div
         dangerouslySetInnerHTML={{ __html: generateHtmlWithTextboxes() }}
         onInput={handleInputChange} // Listen for input changes to resize textboxes
       />
-      <button onClick={replacePlaceholdersWithValues}>Replace Values</button>
+      <button onClick={handleReplaceAndLog}>Replace and Log Updated HTML</button>
     </div>
   );
 };
