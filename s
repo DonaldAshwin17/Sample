@@ -1,62 +1,77 @@
-import React, { useRef, useState } from "react";
+import React, { useState } from 'react';
 
-const DynamicTextBox = () => {
-  const initialInputString = `Here is a [$placeholder1$] and another [$placeholder2$] in the sentence.`;
-  
-  // Store dynamic inputs
-  const inputsRef = useRef({});
-  const [htmlContent, setHtmlContent] = useState(initialInputString);
+const DynamicTextboxes = ({ initialHtml }) => {
+  const [htmlContent, setHtmlContent] = useState(initialHtml);
+  const [inputValues, setInputValues] = useState({}); // Track input values
 
-  // Function to convert placeholders to textboxes
-  const createDynamicHTML = (htmlString) => {
-    const updatedHTML = htmlString.replace(/\[\$(.*?)\$\]/g, (match, placeholder) => {
-      return `<input 
-                type="text" 
-                class="dynamic-input" 
-                data-placeholder="${placeholder}" 
-                placeholder="${placeholder}" 
-                style="width: auto; min-width: 50px; border: 1px solid #ccc; padding: 5px;" 
-                oninput="this.style.width = (this.value.length + 1) + 'ch'"
-              />`;
-    });
-    return updatedHTML;
+  // Generate unique IDs for placeholders to handle duplicates
+  const generateUniqueId = (() => {
+    let count = 0;
+    return () => `placeholder_${count++}`;
+  })();
+
+  // Function to replace [$some text$] placeholders with unique input textboxes
+  const generateHtmlWithTextboxes = () => {
+    const regex = /\[\$(.*?)\$\]/g;
+    let match;
+    let processedHtml = htmlContent;
+    const ids = {};
+
+    // Replace placeholders and assign unique IDs to each input box
+    while ((match = regex.exec(htmlContent)) !== null) {
+      const placeholderText = match[1].trim() || 'input'; // Default placeholder if empty
+      const uniqueId = generateUniqueId();
+      ids[uniqueId] = placeholderText;
+
+      const inputHtml = `<input id="${uniqueId}" type="text" value="${inputValues[uniqueId] || ''}" placeholder="${placeholderText}" data-placeholder="${placeholderText}" style="width:${(inputValues[uniqueId] || placeholderText).length + 2}ch;" />`;
+      
+      processedHtml = processedHtml.replace(match[0], inputHtml); // Ensure this replaces the current match only
+    }
+
+    return processedHtml;
   };
 
-  // Function to update the HTML content with the input values
-  const replacePlaceholders = () => {
-    let updatedHTML = htmlContent;
+  // Function to replace placeholders with the input values
+  const replacePlaceholdersWithValues = () => {
+    const inputs = document.querySelectorAll('input[data-placeholder]');
+    let updatedHtml = htmlContent;
 
-    // Loop through each input and replace the placeholders with the values
-    Object.keys(inputsRef.current).forEach((placeholder) => {
-      const inputElement = inputsRef.current[placeholder];
-      const value = inputElement.value || placeholder; // use the placeholder if no value
-      const regex = new RegExp(`\\[\\$${placeholder}\\$\\]`, "g");
-      updatedHTML = updatedHTML.replace(regex, value);
+    inputs.forEach((input) => {
+      const uniqueId = input.id;
+      const value = input.value || input.placeholder; // Use placeholder if input is empty
+      const placeholder = input.getAttribute('data-placeholder');
+
+      updatedHtml = updatedHtml.replace(
+        new RegExp(`\\[\\$${placeholder}\\$\\]`), 
+        value
+      );
     });
 
-    setHtmlContent(updatedHTML); // Set the new HTML content with replaced values
+    setHtmlContent(updatedHtml); // Update state with replaced values
   };
 
-  // Handle dynamically setting refs on input elements
-  const setInputRefs = () => {
-    const inputElements = document.querySelectorAll("input[data-placeholder]");
-    inputElements.forEach((input) => {
-      const placeholder = input.getAttribute("data-placeholder");
-      inputsRef.current[placeholder] = input; // Store the reference to each input by its placeholder
-    });
+  // Function to dynamically resize the textbox and update its value in the state
+  const handleInputChange = (event) => {
+    const input = event.target;
+    const uniqueId = input.id;
+
+    setInputValues((prevValues) => ({
+      ...prevValues,
+      [uniqueId]: input.value,
+    }));
+
+    input.style.width = `${input.value.length + 2}ch`; // Adjust width dynamically
   };
 
   return (
     <div>
-      {/* Render HTML content with dynamic inputs */}
       <div
-        id="content"
-        dangerouslySetInnerHTML={{ __html: createDynamicHTML(htmlContent) }}
-        onInput={setInputRefs} // Every input change updates refs
+        dangerouslySetInnerHTML={{ __html: generateHtmlWithTextboxes() }}
+        onInput={handleInputChange} // Listen for input changes to resize textboxes
       />
-      <button onClick={replacePlaceholders}>Replace Textboxes</button>
+      <button onClick={replacePlaceholdersWithValues}>Replace Values</button>
     </div>
   );
 };
 
-export default DynamicTextBox;
+export default DynamicTextboxes;
