@@ -1,85 +1,103 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const DynamicTextboxes = ({ initialHtml }) => {
-  const [htmlContent, setHtmlContent] = useState(initialHtml);
-  const [inputValues, setInputValues] = useState({}); // Track input values
+const DynamicTextBox = ({ htmlString }) => {
+  const [inputValues, setInputValues] = useState({});
 
-  // Generate unique IDs for placeholders to handle duplicates
-  const generateUniqueId = (() => {
-    let count = 0;
-    return () => `placeholder_${count++}`;
-  })();
+  // Function to handle input change and store value
+  const handleInputChange = (index, e) => {
+    setInputValues(prevValues => ({
+      ...prevValues,
+      [index]: e.target.value
+    }));
+  };
 
-  // Function to replace [$some text$] placeholders with unique input textboxes
-  const generateHtmlWithTextboxes = () => {
+  // Function to adjust the textbox size based on content
+  const adjustTextboxSize = (e) => {
+    e.target.style.width = (e.target.value.length + 1) + "ch";
+  };
+
+  // Function to parse the input string and insert textboxes
+  const createTextBoxes = (html) => {
     const regex = /\[\$(.*?)\$\]/g;
+    let processedHtml = html;
     let match;
-    let processedHtml = htmlContent;
-    const ids = {};
+    let index = 0;
 
-    // Replace placeholders and assign unique IDs to each input box
-    while ((match = regex.exec(htmlContent)) !== null) {
-      const placeholderText = match[1].trim() || 'input'; // Default placeholder if empty
-      const uniqueId = generateUniqueId();
-      ids[uniqueId] = placeholderText;
-
-      const inputHtml = `<input id="${uniqueId}" type="text" value="${inputValues[uniqueId] || ''}" placeholder="${placeholderText}" data-placeholder="${placeholderText}" style="width:${(inputValues[uniqueId] || placeholderText).length + 2}ch;" />`;
-      
-      processedHtml = processedHtml.replace(match[0], inputHtml); // Ensure this replaces the current match only
+    // Replacing placeholders with input elements
+    while ((match = regex.exec(html)) !== null) {
+      const placeholder = match[1]; // Extract text between [$ $]
+      const textbox = `<input type="text" 
+                             value="${inputValues[index] || ''}" 
+                             placeholder="${placeholder}" 
+                             oninput="this.style.width = ((this.value.length + 1) + 'ch')" 
+                             data-index="${index}" />`;
+      processedHtml = processedHtml.replace(match[0], textbox);
+      index++;
     }
 
     return processedHtml;
   };
 
-  // Function to replace placeholders with the input values and return updated HTML
-  const replacePlaceholdersWithValues = () => {
-    const inputs = document.querySelectorAll('input[data-placeholder]');
-    let updatedHtml = htmlContent;
+  // Using dangerouslySetInnerHTML to display processed HTML with textboxes
+  return (
+    <div
+      dangerouslySetInnerHTML={{ __html: createTextBoxes(htmlString) }}
+    />
+  );
+};
 
-    inputs.forEach((input) => {
-      const uniqueId = input.id;
-      const value = input.value || input.placeholder; // Use placeholder if input is empty
-      const placeholder = input.getAttribute('data-placeholder');
-
-      // Replace only one occurrence of the matching placeholder
-      updatedHtml = updatedHtml.replace(
-        new RegExp(`\\[\\$${placeholder}\\$\\]`), 
-        value
-      );
-    });
-
-    return updatedHtml; // Return the updated HTML string
-  };
-
-  // Function to dynamically resize the textbox and update its value in the state
-  const handleInputChange = (event) => {
-    const input = event.target;
-    const uniqueId = input.id;
-
-    setInputValues((prevValues) => ({
-      ...prevValues,
-      [uniqueId]: input.value,
-    }));
-
-    input.style.width = `${input.value.length + 2}ch`; // Adjust width dynamically
-  };
-
-  // When button is clicked, replace placeholders and log the updated HTML
-  const handleReplaceAndLog = () => {
-    const updatedHtml = replacePlaceholdersWithValues();
-    console.log("Updated HTML:", updatedHtml);
-    setHtmlContent(updatedHtml); // Optional: Update the displayed HTML after replacement
-  };
+const App = () => {
+  const htmlString = `<p>Hello, [$name$]! Please enter your [$email$] and [$phone$] for contact.</p>`;
 
   return (
     <div>
-      <div
-        dangerouslySetInnerHTML={{ __html: generateHtmlWithTextboxes() }}
-        onInput={handleInputChange} // Listen for input changes to resize textboxes
-      />
-      <button onClick={handleReplaceAndLog}>Replace and Log Updated HTML</button>
+      <DynamicTextBox htmlString={htmlString} />
     </div>
   );
 };
 
-export default DynamicTextboxes;
+export default App;
+
+
+// Function to replace [$text$] with input fields
+const createTextBoxes = (htmlString, inputValues) => {
+  const regex = /\[\$(.*?)\$\]/g;
+  let processedHtml = htmlString;
+  let match;
+  let index = 0;
+
+  // Replace each match with an input field
+  while ((match = regex.exec(htmlString)) !== null) {
+    const placeholder = match[1];
+    const inputElement = `<input type="text" 
+                            value="${inputValues[index] || ''}" 
+                            placeholder="${placeholder}" 
+                            data-index="${index}" />`;
+
+    processedHtml = processedHtml.replace(match[0], inputElement);
+    index++;
+  }
+
+  return processedHtml;
+};
+
+// Function to replace input fields with spans containing the input values
+const replaceInputsWithSpans = (htmlString, inputValues) => {
+  const regex = /\[\$(.*?)\$\]/g;
+  let processedHtml = htmlString;
+  let match;
+  let index = 0;
+
+  // Replace each match with a span containing the input value
+  while ((match = regex.exec(htmlString)) !== null) {
+    const inputValue = inputValues[index] || ''; // Get the current input value
+    const spanElement = `<span>${inputValue}</span>`;
+    
+    processedHtml = processedHtml.replace(match[0], spanElement);
+    index++;
+  }
+
+  return processedHtml;
+};
+
+
