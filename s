@@ -1,42 +1,45 @@
 import React, { useState } from 'react';
 
-const PlaceholderReplacer = ({ htmlString }) => {
+const HtmlRenderer = ({ initialHtml }) => {
   const [inputs, setInputs] = useState({});
 
-  const handleChange = (key, value) => {
-    setInputs(prev => ({ ...prev, [key]: value }));
+  const handleInputChange = (placeholder, value) => {
+    setInputs(prev => ({
+      ...prev,
+      [placeholder]: value
+    }));
   };
 
-  const renderHtml = () => {
-    return htmlString.split(/(\[\$.*?\$\])/).map((part, index) => {
-      if (/\[\$.*?\$\]/.test(part)) {
-        const key = part.replace(/\[\$|\$\]/g, '');
-        return (
-          <input
-            key={index}
-            placeholder={key}
-            onChange={(e) => handleChange(key, e.target.value)}
-          />
-        );
-      }
-      return <span key={index}>{part}</span>; // Keep other HTML intact
+  const createHtmlWithInputs = (htmlString) => {
+    return htmlString.replace(/\[\$(.*?)\$]/g, (match, placeholder) => {
+      return `<input type="text" placeholder="${placeholder}" value="${inputs[placeholder] || ''}" data-placeholder="${placeholder}" />`;
     });
   };
 
-  const getFinalHtml = () => {
-    let finalHtml = htmlString;
-    Object.keys(inputs).forEach(key => {
-      finalHtml = finalHtml.replace(`[$${key}$]`, inputs[key]);
+  const transformedHtml = createHtmlWithInputs(initialHtml);
+
+  const handleInputChangeOnRender = (e) => {
+    const placeholder = e.target.getAttribute('data-placeholder');
+    handleInputChange(placeholder, e.target.value);
+  };
+
+  const getFinalHtmlString = () => {
+    return initialHtml.replace(/\[\$(.*?)\$]/g, (match, placeholder) => {
+      return inputs[placeholder] || '';
     });
-    return finalHtml;
   };
 
   return (
-    <div>
-      <div>{renderHtml()}</div>
-      <div>{getFinalHtml()}</div>
-    </div>
+    <>
+      <div
+        dangerouslySetInnerHTML={{ __html: transformedHtml }}
+        onInput={handleInputChangeOnRender}
+      />
+      <button onClick={() => console.log(getFinalHtmlString())}>
+        Get Final HTML String
+      </button>
+    </>
   );
 };
 
-export default PlaceholderReplacer;
+export default HtmlRenderer;
