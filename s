@@ -3,24 +3,32 @@ import React, { useState } from 'react';
 const HtmlRenderer = ({ initialHtml }) => {
   const [inputs, setInputs] = useState({});
 
-  const handleInputChange = (placeholder, value) => {
-    setInputs(prev => ({
-      ...prev,
-      [placeholder]: value
-    }));
-  };
-
-  const createHtmlWithInputs = (htmlString) => {
-    return htmlString.replace(/\[\$(.*?)\$]/g, (match, placeholder) => {
-      return `<input type="text" placeholder="${placeholder}" value="${inputs[placeholder] || ''}" data-placeholder="${placeholder}" />`;
+  // Function to replace placeholders with React inputs
+  const parseHtmlToComponents = (htmlString) => {
+    const parts = htmlString.split(/(\[\$.*?\$])/g); // Split the string into parts by placeholder patterns
+    return parts.map((part, index) => {
+      const match = part.match(/\[\$(.*?)\$]/); // Check if part is a placeholder
+      if (match) {
+        const placeholder = match[1]; // Extract placeholder name
+        return (
+          <input
+            key={index}
+            type="text"
+            placeholder={placeholder}
+            value={inputs[placeholder] || ''}
+            onChange={(e) => handleInputChange(placeholder, e.target.value)}
+          />
+        );
+      }
+      return <span key={index}>{part}</span>; // If it's not a placeholder, render it as text
     });
   };
 
-  const transformedHtml = createHtmlWithInputs(initialHtml);
-
-  const handleInputChangeOnRender = (e) => {
-    const placeholder = e.target.getAttribute('data-placeholder');
-    handleInputChange(placeholder, e.target.value);
+  const handleInputChange = (placeholder, value) => {
+    setInputs(prev => ({
+      ...prev,
+      [placeholder]: value,
+    }));
   };
 
   const getFinalHtmlString = () => {
@@ -31,10 +39,7 @@ const HtmlRenderer = ({ initialHtml }) => {
 
   return (
     <>
-      <div
-        dangerouslySetInnerHTML={{ __html: transformedHtml }}
-        onInput={handleInputChangeOnRender}
-      />
+      <div>{parseHtmlToComponents(initialHtml)}</div>
       <button onClick={() => console.log(getFinalHtmlString())}>
         Get Final HTML String
       </button>
