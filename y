@@ -1,28 +1,50 @@
-import { Controller, Get } from '@nestjs/common';
-import { HealthCheckService } from './health-check.service';  // Ensure the path is correct
-import { TerminusModuleOptions } from '@nestjs/terminus';
+import { Test, TestingModule } from '@nestjs/testing';
+import { HealthController } from './health.controller';
+import { HealthCheckService } from './health-check.service';
 
-@Controller('health')
-export class HealthController {
-  constructor(private readonly healthCheckService: HealthCheckService) {}
+describe('HealthController', () => {
+  let controller: HealthController;
+  let healthCheckService: HealthCheckService;
 
-  @Get('/readiness')
-  async readiness() {
-    const options: TerminusModuleOptions = this.healthCheckService.createTerminusOptions();
-    const readinessEndpoint = options.endpoints.find(endpoint => endpoint.url === '/readiness');
-    if (readinessEndpoint) {
-      return readinessEndpoint.healthIndicators[0]();
-    }
-    return { message: 'Readiness check not configured' };
-  }
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      controllers: [HealthController],
+      providers: [
+        {
+          provide: HealthCheckService,
+          useValue: {
+            createTerminusOptions: jest.fn().mockReturnValue({
+              endpoints: [
+                {
+                  url: '/readiness',
+                  healthIndicators: [jest.fn().mockResolvedValue({ status: 'ok' })],
+                },
+                {
+                  url: '/liveness',
+                  healthIndicators: [jest.fn().mockResolvedValue({ api: { status: 'up and running' } })],
+                },
+              ],
+            }),
+          },
+        },
+      ],
+    }).compile();
 
-  @Get('/liveness')
-  async liveness() {
-    const options: TerminusModuleOptions = this.healthCheckService.createTerminusOptions();
-    const livenessEndpoint = options.endpoints.find(endpoint => endpoint.url === '/liveness');
-    if (livenessEndpoint) {
-      return livenessEndpoint.healthIndicators[0]();
-    }
-    return { message: 'Liveness check not configured' };
-  }
-}
+    controller = module.get<HealthController>(HealthController);
+    healthCheckService = module.get<HealthCheckService>(HealthCheckService);
+  });
+
+  it('should be defined', () => {
+    expect(controller).toBeDefined();
+  });
+
+  it('should return readiness status', async () => {
+    const readinessStatus = await controller.readiness();
+    expect(readinessStatus).toEqual({ status: 'ok' });
+  });
+
+  it('should return liveness status', async () => {
+    const livenessStatus = await controller.liveness();
+    expect(livenessStatus).toEqual({ api: { status: 'up and running' } });
+  });
+});
