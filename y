@@ -1,17 +1,17 @@
-import { MigrationInterface, QueryRunner, TableColumn } from "typeorm";
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddIsDeletedToDispositionSupport implements MigrationInterface {
     public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.addColumn("disposition_support", new TableColumn({
-            name: "isDeleted",
-            type: "boolean",
-            default: false,
-        }));
+        await queryRunner.query(`
+            ALTER TABLE "disposition_support"
+            ADD COLUMN "isDeleted" BOOLEAN DEFAULT FALSE;
+        `);
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.dropColumn("disposition_support", "isDeleted");
+        await queryRunner.query(`
+            ALTER TABLE "disposition_support"
+            DROP COLUMN "isDeleted";
+        `);
     }
 }
-npx typeorm migration:generate -n AddIsDeletedToDispositionSupport
-npx typeorm migration:run
