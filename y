@@ -15,3 +15,17 @@ export class AddIsDeletedToDispositionSupport implements MigrationInterface {
         `);
     }
 }
+
+
+async delete(id: number): Promise<DispositionSupport> {
+    this.logger.log(`Somebody asked to delete disposition support id ${id}`);
+
+    // Find the disposition support entry by ID
+    const dispositionSupport: DispositionSupport = await this.findOneOrDie(id);
+
+    // Set isDeleted to true
+    dispositionSupport.isDeleted = true;
+
+    // Save the updated record
+    return this.dispositionSupportRepository.save(dispositionSupport);
+}
