@@ -1,50 +1,17 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { HealthController } from './health.controller';
-import { HealthCheckService } from './health-check.service';
+import { MigrationInterface, QueryRunner, TableColumn } from "typeorm";
 
-describe('HealthController', () => {
-  let controller: HealthController;
-  let healthCheckService: HealthCheckService;
+export class AddIsDeletedToDispositionSupport implements MigrationInterface {
+    public async up(queryRunner: QueryRunner): Promise<void> {
+        await queryRunner.addColumn("disposition_support", new TableColumn({
+            name: "isDeleted",
+            type: "boolean",
+            default: false,
+        }));
+    }
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      controllers: [HealthController],
-      providers: [
-        {
-          provide: HealthCheckService,
-          useValue: {
-            createTerminusOptions: jest.fn().mockReturnValue({
-              endpoints: [
-                {
-                  url: '/readiness',
-                  healthIndicators: [jest.fn().mockResolvedValue({ status: 'ok' })],
-                },
-                {
-                  url: '/liveness',
-                  healthIndicators: [jest.fn().mockResolvedValue({ api: { status: 'up and running' } })],
-                },
-              ],
-            }),
-          },
-        },
-      ],
-    }).compile();
-
-    controller = module.get<HealthController>(HealthController);
-    healthCheckService = module.get<HealthCheckService>(HealthCheckService);
-  });
-
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
-
-  it('should return readiness status', async () => {
-    const readinessStatus = await controller.readiness();
-    expect(readinessStatus).toEqual({ status: 'ok' });
-  });
-
-  it('should return liveness status', async () => {
-    const livenessStatus = await controller.liveness();
-    expect(livenessStatus).toEqual({ api: { status: 'up and running' } });
-  });
-});
+    public async down(queryRunner: QueryRunner): Promise<void> {
+        await queryRunner.dropColumn("disposition_support", "isDeleted");
+    }
+}
+npx typeorm migration:generate -n AddIsDeletedToDispositionSupport
+npx typeorm migration:run
