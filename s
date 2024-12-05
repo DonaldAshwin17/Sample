@@ -1,25 +1,33 @@
 import requests
-from requests.auth import HTTPBasicAuth
 
-def get_access_token():
-    url = "https://url.url.com/openam/oauth2/access_token"
-    params = {
-        "grant_type": "client_credentials"
-    }
-    data = {
-        "scope": "api.dispute-matter.v1 api.dispute-matter.matters.read api.dispute-matter.matters.write "
-                 "api.dispute-matter.matters.source api.dispute-matter.matters.source--panda-api "
-                 "api.dispute-matter.datalake.read api.edmpanda.v1"
-    }
-    headers = {
-        "Content-Type": "application/x-www-form-urlencoded"
-    }
-    auth = HTTPBasicAuth("client_id", "client_password")
+def fetch_api_data(bearer_token, api_url):
+    """
+    Fetch data from the given API using a Bearer token.
     
-    response = requests.post(url, params=params, data=data, headers=headers, auth=auth)
-    return response.json()
+    :param bearer_token: str, Bearer token for authentication
+    :param api_url: str, API endpoint URL
+    :return: dict or None, Response body as a JSON object or None if an error occurs
+    """
+    headers = {
+        "Authorization": f"Bearer {bearer_token}",
+        "Content-Type": "application/json"
+    }
+    
+    try:
+        response = requests.get(api_url, headers=headers)
+        response.raise_for_status()  # Raise an HTTPError for bad responses (4xx and 5xx)
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching data: {e}")
+        return None
 
 # Example usage
 if __name__ == "__main__":
-    token_response = get_access_token()
-    print(token_response)
+    token = "your_bearer_token_here"
+    api_endpoint = "https://example.com/api/v1/resource"
+    
+    data = fetch_api_data(token, api_endpoint)
+    if data:
+        print("API Response:", data)
+    else:
+        print("Failed to fetch data.")
