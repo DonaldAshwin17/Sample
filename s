@@ -1,65 +1,25 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { HealthCheckService } from './health-check.service';
-import { DatabaseHealthIndicator, DNSHealthIndicator, TerminusModuleOptions } from '@nestjs/terminus';
+import requests
+from requests.auth import HTTPBasicAuth
 
-describe('HealthCheckService', () => {
-  let service: HealthCheckService;
-  let dbHealthIndicator: DatabaseHealthIndicator;
-  let dnsHealthIndicator: DNSHealthIndicator;
+def get_access_token():
+    url = "https://url.url.com/openam/oauth2/access_token"
+    params = {
+        "grant_type": "client_credentials"
+    }
+    data = {
+        "scope": "api.dispute-matter.v1 api.dispute-matter.matters.read api.dispute-matter.matters.write "
+                 "api.dispute-matter.matters.source api.dispute-matter.matters.source--panda-api "
+                 "api.dispute-matter.datalake.read api.edmpanda.v1"
+    }
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
+    auth = HTTPBasicAuth("client_id", "client_password")
+    
+    response = requests.post(url, params=params, data=data, headers=headers, auth=auth)
+    return response.json()
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        HealthCheckService,
-        {
-          provide: DatabaseHealthIndicator,
-          useValue: { pingCheck: jest.fn() },
-        },
-        {
-          provide: DNSHealthIndicator,
-          useValue: { pingCheck: jest.fn() },
-        },
-      ],
-    }).compile();
-
-    service = module.get<HealthCheckService>(HealthCheckService);
-    dbHealthIndicator = module.get<DatabaseHealthIndicator>(DatabaseHealthIndicator);
-    dnsHealthIndicator = module.get<DNSHealthIndicator>(DNSHealthIndicator);
-  });
-
-  it('should be defined', () => {
-    expect(service).toBeDefined();
-  });
-
-  it('should create terminus options with readiness and liveness endpoints', () => {
-    const options: TerminusModuleOptions = service.createTerminusOptions();
-    expect(options.endpoints).toHaveLength(2);
-
-    const readinessEndpoint = options.endpoints.find(endpoint => endpoint.url === '/readiness');
-    expect(readinessEndpoint).toBeDefined();
-
-    const livenessEndpoint = options.endpoints.find(endpoint => endpoint.url === '/liveness');
-    expect(livenessEndpoint).toBeDefined();
-  });
-
-  it('should call pingCheck for the database in readiness endpoint', async () => {
-    const dbPingCheckSpy = jest.spyOn(dbHealthIndicator, 'pingCheck').mockResolvedValue({ status: 'ok' });
-    const options: TerminusModuleOptions = service.createTerminusOptions();
-
-    const readinessEndpoint = options.endpoints.find(endpoint => endpoint.url === '/readiness');
-    await readinessEndpoint.healthIndicators[0]();
-
-    expect(dbPingCheckSpy).toHaveBeenCalledWith('database');
-  });
-
-  it('should call pingCheck for the DNS in readiness endpoint', async () => {
-    const dnsPingCheckSpy = jest.spyOn(dnsHealthIndicator, 'pingCheck').mockResolvedValue({ status: 'ok' });
-    const options: TerminusModuleOptions = service.createTerminusOptions();
-
-    const readinessEndpoint = options.endpoints.find(endpoint => endpoint.url === '/readiness');
-    await readinessEndpoint.healthIndicators[1]();
-
-    expect(dnsPingCheckSpy).toHaveBeenCalledWith('sgconnect-auth-server', process.env.OAUTH2_HEALTH_CHECK_URL);
-  });
-});
-
+# Example usage
+if __name__ == "__main__":
+    token_response = get_access_token()
+    print(token_response)
